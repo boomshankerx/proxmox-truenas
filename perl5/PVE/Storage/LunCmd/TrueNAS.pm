@@ -1,17 +1,16 @@
 package PVE::Storage::LunCmd::TrueNAS;
-
-# use lib '/root/freenas-proxmox/perl5';
 use strict;
 use warnings;
 
 use Data::Dumper;
 use JSON;
-use PVE::SafeSyslog;
-use TrueNAS::Client;
-
 use Log::Any qw($log);
 use Log::Any::Adapter;
-# Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
+use PVE::SafeSyslog;
+use Scalar::Util qw(reftype);
+use TrueNAS::Client;
+
+Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
 
 # Global variable definitions
 my $MAX_LUNS                  = 255;       # Max LUNS per target  the iSCSI server
@@ -25,6 +24,8 @@ my $dev_prefix                = "/dev/";
 my $truenas_product      = undef;
 my $truenas_version      = undef;
 my $truenas_release_type = "Production";
+
+my $debug = 1;
 
 #
 # Return base path for zvols
@@ -249,8 +250,8 @@ sub truenas_api_connect {
     _log("Called");
 
     my $apihost =
-      defined( $scfg->{freenas_apiv4_host} )
-      ? $scfg->{freenas_apiv4_host}
+      defined( $scfg->{truenas_apiv4_host} )
+      ? $scfg->{truenas_apiv4_host}
       : $scfg->{portal};
 
     if ( !defined $truenas_server_list->{$apihost} ) {
@@ -273,8 +274,8 @@ sub truenas_api_check {
     my ( $scfg, $timeout ) = @_;
     my $result = {};
     my $apihost =
-      defined( $scfg->{freenas_apiv4_host} )
-      ? $scfg->{freenas_apiv4_host}
+      defined( $scfg->{truenas_apiv4_host} )
+      ? $scfg->{truenas_apiv4_host}
       : $scfg->{portal};
 
     _log("Called");
@@ -327,6 +328,10 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
+    if (defined reftype($message)) {
+        $message = Dumper($message);
+    }
+
     my $syslog_map = {
         'debug' => 'debug',
         'info'  => 'info',
@@ -339,7 +344,7 @@ sub _log {
     $src     = ( split( /::/, $src ) )[-1];
     $message = "[$level_uc]: TrueNAS: $src : $message";
     $log->$level($message);
-    if ( $level ne 'debug' ) {
+    if ($debug) {
         syslog( "$syslog_map->{$level}", $message );
     }
 }

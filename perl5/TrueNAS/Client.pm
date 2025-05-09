@@ -1,34 +1,36 @@
 package TrueNAS::Client;
 use strict;
 use warnings;
-use Errno qw(EINTR);
 
-use IO::Socket::INET;
+use IO::Socket::IP;
 use IO::Socket::SSL;
-use Protocol::WebSocket::Handshake::Client;
-use Protocol::WebSocket::Frame;
-use JSON::RPC::Common::Procedure::Call;
-use JSON::RPC::Common::Procedure::Return;
-use JSON::RPC::Common::Procedure::Return::Error;
 use JSON::RPC::Common::Marshal::Text;
+use JSON::RPC::Common::Procedure::Call;
+use Protocol::WebSocket::Frame;
+use Protocol::WebSocket::Handshake::Client;
 
-use Carp;
+use Carp qw(croak);
 use Data::Dumper;
+use Errno qw(EINTR);
 use JSON;
 use Log::Any qw($log);
 use Log::Any::Adapter;
 use PVE::SafeSyslog;
+use Scalar::Util qw(reftype);
+
+my $debug = 1;
 
 sub new {
     my ( $class, $args ) = @_;
 
+    _log( $args, 'debug' );
+
     my $self = {
-        debug     => $args->{debug}              || 0,
-        host      => $args->{freenas_apiv4_host} || croak("host is required"),
-        username  => $args->{freenas_user},
-        password  => $args->{freenas_password},
-        secure    => $args->{freenas_use_ssl} || 0,
-        token     => $args->{token},
+        host      => $args->{truenas_apiv4_host} || croak("Host is required"),
+        username  => $args->{truenas_user},
+        password  => $args->{truenas_password},
+        secure    => $args->{truenas_use_ssl} || 0,
+        apikey    => $args->{truenas_apikey},
         iqn       => $args->{target},
         target    => undef,
         target_id => undef,
@@ -37,11 +39,11 @@ sub new {
         client    => undef,
         conn      => undef,
         timeout   => 10,
-        url       => undef,
         connected => 0,
         auth      => 0,
         sock      => undef,
         frame     => Protocol::WebSocket::Frame->new(),
+        protocol  => 'jsonrpc',
 
         # Message Handling
         msg_id  => 0,
@@ -52,15 +54,16 @@ sub new {
         error  => undef,
     };
 
+    _log( $args, 'debug' );
+
     # Validation
-    unless ( $self->{token} || ( $self->{username} && $self->{password} ) ) {
-        croak("Either token or username/password must be provided");
+    unless ( $self->{apikey} || ( $self->{username} && $self->{password} ) ) {
+        croak("Either apikey or username/password must be provided");
     }
 
-    # Build URL
+    # Build URLs for both endpoints
     my $scheme = $self->{secure} ? "wss://" : "ws://";
-    $self->{url} = $scheme . $self->{host} . "/api/current";
-    _log( "URL: " . $self->{url}, 'debug' );
+    $self->{endpoints} = [ { url => $scheme . $self->{host} . "/api/current", protocol => 'jsonrpc' }, { url => $scheme . $self->{host} . "/websocket", protocol => 'ddp' } ];
 
     # Extract target
     $self->{target} = ( split( /:/, $self->{iqn} ) )[-1];
@@ -73,96 +76,63 @@ sub connect {
     my ($self) = @_;
 
     my $sock;
-    if ( $self->{secure} ) {
-        $sock = IO::Socket::SSL->new(
-            PeerHost        => $self->{host},
-            PeerPort        => 443,
-            SSL_verify_mode => 0,
-        ) or die "SSL connect failed: $!";
-    }
-    else {
-        $sock = IO::Socket::INET->new(
-            PeerAddr => $self->{host},
-            PeerPort => 80,
-            Proto    => 'tcp',
-        ) or die "TCP connect failed: $!";
-    }
+    my $last_error;
 
-    my $handshake = Protocol::WebSocket::Handshake::Client->new( url => $self->{url} );
-    print $sock $handshake->to_string;
+    for my $endpoint ( @{ $self->{endpoints} } ) {
+        my $url = $endpoint->{url};
+        $self->{protocol} = $endpoint->{protocol};
 
-    my $response = '';
-    while (<$sock>) {
-        $response .= $_;
-        last if $_ =~ /^\r?\n$/;
-    }
-    die "Handshake failed" unless $response =~ m/101 Switching Protocols/;
-    _log( $response, 'debug' );
+        eval {
+            if ( $self->{secure} ) {
+                $sock = IO::Socket::SSL->new(
+                    PeerHost        => $self->{host},
+                    PeerPort        => 443,
+                    SSL_verify_mode => 0,
+                ) or croak "SSL connect failed: $!";
+            }
+            else {
+                $sock = IO::Socket::IP->new(
+                    PeerAddr => $self->{host},
+                    PeerPort => 80,
+                    Proto    => 'tcp',
+                ) or croak "TCP connect failed: $!";
+            }
+        };
+        if ($@) {
+            $last_error = $@;
+            _log( "Socket connection failed for  $last_error", 'error' );
+            next;    # Try the next endpoint
+        }
 
-    $self->{connected} = 1;
-    $self->{sock}      = $sock;
-    _log("Connected");
+        # Handshake
+        _log( $url, 'debug' );
+        my $handshake;
+        my $response = '';
+        eval {
+            $handshake = Protocol::WebSocket::Handshake::Client->new( url => $url );
+            print $sock $handshake->to_string;
 
-}
+            while (<$sock>) {
+                $response .= $_;
+                last if $_ =~ /^\r?\n$/;
+            }
+            $handshake->parse($response);
 
-sub _authenticate {
-    my ($self) = @_;
+        };
+        if ( $@ || !$handshake->is_done ) {
+            $last_error = $@ || $handshake->error;
+            _log( "Handshake failed: $last_error", 'error' );
+            close($sock) if $sock;
+            $sock = undef;
+            next;
+        }
 
-    _log( "Authenticating", 'debug' );
-
-    my $message = $self->_rpc_gen( 'auth.login', $self->{username}, $self->{password} );
-    my $result  = $self->_call($message);
-
-    if ($result) {
-        $self->{auth} = 1;
-        _log("Authenticated");
-    }
-    else {
-        $self->{auth} = 0;
-        _log( "Authentication failed", 'error' );
+        $self->{connected} = 1;
+        $self->{sock}      = $sock;
+        _log("Success");
         return;
     }
-}
-
-# Reads WebSocket response with timeout and returns decoded result
-sub _call {
-    my $self    = shift;
-    my $message = shift;
-
-    # Write message to socket
-    my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
-    print { $self->{sock} } $frame->to_bytes;
-
-    $self->_receive();
-
-}
-
-sub _receive {
-    my $self    = shift;
-    my $timeout = shift // $self->{timeout};    # seconds
-    my $start   = time;
-
-    my $read;
-    my $chunk;
-
-    # Read response from socket
-    while ( ( time - $start ) < $timeout ) {
-        do {
-            $read = sysread( $self->{sock}, $chunk, 65536 );
-        } while ( !defined($read) && $! == EINTR );
-        die "Read failed: $!" unless defined $read && $read > 0;
-        $self->{frame}->append($chunk);
-
-        while ( my $response = $self->{frame}->next ) {
-            if ( $self->{frame}->is_close ) {
-                $self->disconnect;
-            }
-            return $self->_handle_response($response);
-        }
-        select( undef, undef, undef, 0.01 );    # short sleep to avoid tight loop
-    }
-
-    die "Timeout waiting for response";
+    croak "Failed to connect to any endpoint: $last_error";
 
 }
 
@@ -179,12 +149,102 @@ sub request {
     my ( $result, $error );
 
     # Construct message
-    my $message = _rpc_gen( $self, $method, @params );
+    my $message = _message_gen( $self, $method, @params );
     _log( $message, 'debug' );
 
     $result = _call( $self, $message );
     return $result;
 
+}
+
+sub _authenticate {
+    my ($self) = @_;
+    my $message;
+    my $result;
+
+    _log( "Authenticating", 'debug' );
+
+    if ( $self->{protocol} eq 'ddp' ) {
+        # Send Connect
+        $message = '{ "msg": "connect", "version": "1", "support": ["1"] }';
+        $result  = $self->_call($message);
+    }
+
+    if ( $self->{apikey} ) {
+        $message = $self->_message_gen( 'auth.login_with_api_key', $self->{apikey} );
+        $result  = $self->_call($message);
+    }
+    else {
+        $message = $self->_message_gen( 'auth.login', $self->{username}, $self->{password} );
+        $result  = $self->_call($message);
+    }
+
+    if ($result) {
+        $self->{auth} = 1;
+        _log("Authenticated");
+    }
+    else {
+        $self->{auth} = 0;
+        _log( "Authentication failed", 'error' );
+        croak "Authentication failed";
+        return;
+    }
+}
+
+# Reads WebSocket response with timeout and returns decoded result
+sub _call {
+    my $self    = shift;
+    my $message = shift;
+    my $timeout = shift // $self->{timeout};
+
+    _log( $message, 'debug' );
+
+    my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
+    $self->_send( $frame->to_bytes );
+
+    return $self->_receive($timeout);
+}
+
+sub _send {
+    my ( $self, $bytes ) = @_;
+
+    my $written = syswrite( $self->{sock}, $bytes );
+    croak "Write failed: $!" unless defined $written;
+}
+
+sub _receive {
+    my $self    = shift;
+    my $timeout = shift;
+    my $start   = time;
+    my $buffer;
+
+    while ( ( time - $start ) < $timeout ) {
+        my $read;
+        my $chunk;
+
+        do {
+            $read = sysread( $self->{sock}, $chunk, 65536 );
+            if ( !defined($read) ) {
+                next if $! == EINTR;
+                croak "Read failed: $!";
+            }
+            elsif ( $read == 0 ) {
+                _log( "Connection closed by remote host", 'warn' );
+                $self->disconnect;
+                return;
+            }
+        } while ( !defined($read) );
+
+        $self->{frame}->append($chunk);
+
+        while ( my $response = $self->{frame}->next ) {
+            return $self->_handle_response($response);
+        }
+
+        select( undef, undef, undef, 0.01 );    # avoid tight loop
+    }
+
+    croak "Timeout waiting for response after ${timeout}s";
 }
 
 # Handle incoming JSON-RPC responses
@@ -193,9 +253,7 @@ sub _handle_response {
 
     _log( $data, 'debug' );
 
-    my $id = _get_id($data);
-
-    my ( $failed, $result, $error ) = _rpc_parse( $self, $data );
+    my ( $failed, $result, $error ) = _message_parse( $self, $data );
     if ($failed) {
         on_error( $self, "Message Parse Failed" );
         return;
@@ -225,9 +283,9 @@ sub disconnect {
     };
 
     close( $self->{sock} );
-    $self->{sock} = undef;
+    $self->{sock}      = undef;
     $self->{connected} = 0;
-    $self->{auth}      = 0; 
+    $self->{auth}      = 0;
 }
 
 # Destructor: ensure the socket is closed on object destruction
@@ -381,7 +439,7 @@ sub iscsi_lun_create {
 sub iscsi_lun_delete {
     my ( $self, $path ) = @_;
 
-    my $lun = iscsi_lun_get( $self, $path, $self->{target} );
+    my $lun = $self->iscsi_lun_get( $path, $self->{target} );
     if ( !$lun ) {
         _log( "LUN not found: $path", 'error' );
         return;
@@ -422,6 +480,24 @@ sub iscsi_lun_nextid {
     return $lun_id;
 }
 
+# EVENTS
+
+sub on_error {
+    my $self  = shift;
+    my $error = shift;
+    my $message;
+
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        $message = $error->{message};
+    }
+    elsif ( $self->{protocol} eq 'ddp' ) {
+        $message = $error->{type} . " : " . $error->{reason};
+    }
+    $self->{error} = $message;
+    _log( $error, 'error' );
+
+}
+
 # PROPERTIES
 
 sub response {
@@ -453,56 +529,93 @@ sub _build_query {
     return $result;
 }
 
-sub _get_id {
-    my $data = shift;
-    my $id   = decode_json($data)->{id};
-    return $id;
-}
-
-sub _rpc_gen {
+sub _message_gen {
     my $self   = shift;
     my $method = shift;
     my @params = @_;
 
-    my $rpc = $self->{rpc};
-    my $id  = $self->{msg_id}++;
+    my $message;
+    my $id = $self->{msg_id}++;
 
-    @params = _rpc_sanitize(@params);
+    @params = _message_sanatize(@params);
 
-    my $call = JSON::RPC::Common::Procedure::Call->inflate(
-        jsonrpc => '2.0',
-        id      => $id,
-        method  => $method,
-        params  => \@params,
-    );
-    my $result = $rpc->call_to_json($call);
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        my $rpc = $self->{rpc};
 
-    return $result;
+        my $call = JSON::RPC::Common::Procedure::Call->inflate(
+            jsonrpc => '2.0',
+            id      => $id,
+            method  => $method,
+            params  => \@params,
+        );
+        $message = $rpc->call_to_json($call);
+    }
+    elsif ( $self->{protocol} eq 'ddp' ) {
+
+        $message = {
+            msg     => 'method',
+            method  => $method,
+            params  => \@params,
+            id      => $id,
+            version => '1',
+        };
+        $message = encode_json($message);
+
+    }
+
+    return $message;
 }
 
-sub _rpc_parse {
+sub _message_parse {
     my ( $self, $data ) = @_;
-    my $rpc = $self->{rpc};
 
     my $failed = 0;
     my $result = undef;
     my $error  = undef;
 
-    my $response = eval { $rpc->json_to_return($data) };
-    if ($@) {
-        $failed = 1;
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        my $rpc = $self->{rpc};
+        my $message;
+        $message = $rpc->json_to_return($data);
+        if ( !defined $message->{result} ) {
+            $failed = 1;
+            return ( $failed, undef, undef );
+        }
+        elsif ( defined $message->{error} ) {
+            $error = $message->{error};
+            return ( undef, undef, $error );
+        }
+        else {
+            $result = $message->{result};
+            return ( undef, $result, undef );
+        }
+
     }
-    elsif ( defined $response->{error} ) {
-        $error = $response->{error};
+    elsif ( $self->{protocol} eq 'ddp' ) {
+        my $message;
+        eval { $message = decode_json($data) };
+        if ($@) {
+            $failed = 1;
+            return ( $failed, undef, undef );
+        }
+        if ( $message->{msg} eq 'connected' ) {
+            return ( undef, 1, undef );
+        }
+        if ( $message->{msg} eq 'result' ) {
+            if ( defined $message->{error} ) {
+                return ( undef, undef, $message->{error} );
+            }
+            else {
+                return ( undef, $message->{result}, undef );
+            }
+        }
+
     }
-    else {
-        $result = $response->{result};
-    }
-    return ( $failed, $result, $error );
+
 }
 
 # Sanitize numbers as strings
-sub _rpc_sanitize {
+sub _message_sanatize {
     my @params = @_;
 
     for my $item (@params) {
@@ -510,13 +623,13 @@ sub _rpc_sanitize {
 
             # Recursively process hash values
             for my $key ( keys %$item ) {
-                $item->{$key} = ( _rpc_sanitize( $item->{$key} ) )[0];
+                $item->{$key} = ( _message_sanatize( $item->{$key} ) )[0];
             }
         }
         elsif ( ref($item) eq 'ARRAY' ) {
 
             # Recursively process array elements
-            @$item = _rpc_sanitize(@$item);
+            @$item = _message_sanatize(@$item);
         }
         elsif ( !ref($item) && defined($item) && $item =~ /^-?\d*\.?\d+$/ ) {
 
@@ -533,6 +646,10 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
+    if (defined reftype($message)) {
+        $message = Dumper($message);
+    }
+
     my $syslog_map = {
         'debug' => 'debug',
         'info'  => 'info',
@@ -545,7 +662,7 @@ sub _log {
     $src     = ( split( /::/, $src ) )[-1];
     $message = "[$level_uc]: TrueNAS: $src : $message";
     $log->$level($message);
-    if ( $level ne 'debug' ) {
+    if ($debug) {
         syslog( "$syslog_map->{$level}", $message );
     }
 }

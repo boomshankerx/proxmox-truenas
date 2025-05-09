@@ -1,6 +1,6 @@
---- pvemanagerlib.js.orig	2025-05-09 19:00:26.843910202 -0600
-+++ pvemanagerlib.js	2025-05-09 21:59:14.058540215 -0600
-@@ -9410,6 +9410,7 @@
+--- pvemanagerlib.js.orig	2022-03-17 09:08:40.000000000 -0400
++++ pvemanagerlib.js	2022-04-03 08:54:10.229689187 -0400
+@@ -8068,6 +8068,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
  	['comstar', 'Comstar'],
@@ -8,7 +8,7 @@
  	['istgt', 'istgt'],
  	['iet', 'IET'],
  	['LIO', 'LIO'],
-@@ -60264,6 +60265,7 @@
+@@ -49636,6 +49637,7 @@
  	data: {
  	    isLIO: false,
  	    isComstar: true,
@@ -16,7 +16,7 @@
  	    hasWriteCacheOption: true,
  	},
      },
-@@ -60276,10 +60278,29 @@
+@@ -49648,10 +49650,26 @@
  	    },
  	},
  	changeISCSIProvider: function(f, newVal, oldVal) {
@@ -36,18 +36,15 @@
 +		me.lookupReference('truenas_password_field').allowBlank = true;
 +		me.lookupReference('truenas_confirmpw_field').setValue('');
 +		me.lookupReference('truenas_confirmpw_field').allowBlank = true;
-+		me.lookupReference('truenas_apikey').setValue('');
-+		me.lookupReference('truenas_apikey_field').allowBlank = true;
 +	    } else {
 +		me.lookupReference('truenas_user_field').allowBlank = true;
 +		me.lookupReference('truenas_password_field').allowBlank = true;
 +		me.lookupReference('truenas_confirmpw_field').allowBlank = true;
-+		me.lookupReference('truenas_apikey_field').allowBlank = true;
 +	    }
  	},
      },
  
-@@ -60297,10 +60318,25 @@
+@@ -49669,6 +49687,7 @@
      },
  
      setValues: function(values) {
@@ -55,25 +52,7 @@
  	values.writecache = values.nowritecache ? 0 : 1;
  	this.callParent([values]);
      },
- 
-+    validate: function() {
-+        var me = this;
-+        var user = me.lookupReference('truenas_user_field').getValue();
-+        var pass = me.lookupReference('truenas_password_field').getValue();
-+        var apikey = me.lookupReference('truenas_apikey_field').getValue();
-+
-+        if (!apikey && (!user || !pass)) {
-+            return "Provide either an API key or both username and password.";
-+        }
-+
-+        return true;
-+    },
-+
-+
-     initComponent: function() {
- 	var me = this;
- 
-@@ -60313,7 +60349,7 @@
+@@ -49685,7 +49704,7 @@
  		allowBlank: false,
  	    },
  	    {
@@ -82,7 +61,7 @@
  		name: 'pool',
  		value: '',
  		fieldLabel: gettext('Pool'),
-@@ -60323,11 +60359,11 @@
+@@ -49695,11 +49714,11 @@
  		xtype: me.isCreate ? 'textfield' : 'displayfield',
  		name: 'blocksize',
  		value: '4k',
@@ -96,7 +75,7 @@
  		name: 'target',
  		value: '',
  		fieldLabel: gettext('Target'),
-@@ -60338,9 +60374,34 @@
+@@ -49710,9 +49729,34 @@
  		name: 'comstar_tg',
  		value: '',
  		fieldLabel: gettext('Target group'),
@@ -132,7 +111,7 @@
  	];
  
  	me.column2 = [
-@@ -60370,7 +60431,9 @@
+@@ -49742,7 +49786,9 @@
  		xtype: me.isCreate ? 'textfield' : 'displayfield',
  		name: 'comstar_hg',
  		value: '',
@@ -143,7 +122,7 @@
  		fieldLabel: gettext('Host group'),
  		allowBlank: true,
  	    },
-@@ -60378,9 +60441,75 @@
+@@ -49750,9 +49796,62 @@
  		xtype: me.isCreate ? 'textfield' : 'displayfield',
  		name: 'lio_tpg',
  		value: '',
@@ -205,19 +184,6 @@
 +		    }
 +		    return true;
 +		},
-+	    },
-+	    {
-+		xtype: 'proxmoxtextfield',
-+		name: 'truenas_apikey',
-+		reference: 'truenas_apikey_field',
-+		inputType: me.isCreate ? '' : 'password',
-+		value: '',
-+		editable: true,
-+		emptyText: gettext('Optional if username+password'),
-+		bind: {
-+		    hidden: '{!isTrueNAS}'
-+		},
-+		fieldLabel: gettext('API key'),
  	    },
  	];
  

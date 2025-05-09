@@ -1,10 +1,10 @@
---- ZFSPlugin.pm.orig	2025-05-09 20:27:23.109483798 -0600
-+++ ZFSPlugin.pm	2025-05-09 20:32:04.422581694 -0600
+--- ZFSPlugin.pm.orig	2022-02-04 12:08:01.000000000 -0500
++++ ZFSPlugin.pm	2022-03-26 13:51:40.660068908 -0400
 @@ -10,6 +10,7 @@
  
  use base qw(PVE::Storage::ZFSPoolPlugin);
  use PVE::Storage::LunCmd::Comstar;
-+use PVE::Storage::LunCmd::TrueNAS;
++use PVE::Storage::LunCmd::FreeNAS;
  use PVE::Storage::LunCmd::Istgt;
  use PVE::Storage::LunCmd::Iet;
  use PVE::Storage::LunCmd::LIO;
@@ -20,7 +20,7 @@
      my ($provider) = @_;
  
 -    die "$provider: unknown iscsi provider. Available [comstar, istgt, iet, LIO]";
-+    die "$provider: unknown iscsi provider. Available [comstar, truenas, istgt, iet, LIO]";
++    die "$provider: unknown iscsi provider. Available [comstar, freenas, istgt, iet, LIO]";
  };
  
  my $zfs_get_base = sub {
@@ -28,8 +28,8 @@
  
      if ($scfg->{iscsiprovider} eq 'comstar') {
          return PVE::Storage::LunCmd::Comstar::get_base;
-+    } elsif ($scfg->{iscsiprovider} eq 'truenas') {
-+        return PVE::Storage::LunCmd::TrueNAS::get_base;
++    } elsif ($scfg->{iscsiprovider} eq 'freenas') {
++        return PVE::Storage::LunCmd::FreeNAS::get_base;
      } elsif ($scfg->{iscsiprovider} eq 'istgt') {
          return PVE::Storage::LunCmd::Istgt::get_base;
      } elsif ($scfg->{iscsiprovider} eq 'iet') {
@@ -37,8 +37,8 @@
      if ($lun_cmds->{$method}) {
          if ($scfg->{iscsiprovider} eq 'comstar') {
              $msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
-+        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
-+            $msg = PVE::Storage::LunCmd::TrueNAS::run_lun_command($scfg, $timeout, $method, @params);
++        } elsif ($scfg->{iscsiprovider} eq 'freenas') {
++            $msg = PVE::Storage::LunCmd::FreeNAS::run_lun_command($scfg, $timeout, $method, @params);
          } elsif ($scfg->{iscsiprovider} eq 'istgt') {
              $msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
          } elsif ($scfg->{iscsiprovider} eq 'iet') {
@@ -58,36 +58,32 @@
  # Configuration
  
  sub type {
-@@ -184,6 +199,28 @@
+@@ -184,6 +199,24 @@
  	    description => "iscsi provider",
  	    type => 'string',
  	},
-+	# This is for TrueNAS iscsi and API intergration
++	# This is for FreeNAS iscsi and API intergration
 +	# And some enhancements asked by the community
-+	truenas_user => {
-+	    description => "TrueNAS API Username",
++	freenas_user => {
++	    description => "FreeNAS API Username",
 +	    type => 'string',
 +	},
-+	truenas_password => {
-+	    description => "TrueNAS API Password",
++	freenas_password => {
++	    description => "FreeNAS API Password",
 +	    type => 'string',
 +	},
-+	truenas_use_ssl => {
-+	    description => "TrueNAS API access via SSL",
++	freenas_use_ssl => {
++	    description => "FreeNAS API access via SSL",
 +	    type => 'boolean',
 +	},
-+	truenas_apiv4_host => {
-+	    description => "TrueNAS API Host",
-+	    type => 'string',
-+	},
-+	truenas_apikey => {
-+	    description => "TrueNAS API key",
++	freenas_apiv4_host => {
++	    description => "FreeNAS API Host",
 +	    type => 'string',
 +	},
  	# this will disable write caching on comstar and istgt.
  	# it is not implemented for iet. iet blockio always operates with
  	# writethrough caching when not in readonly mode
-@@ -211,14 +248,19 @@
+@@ -211,14 +244,18 @@
  	nodes => { optional => 1 },
  	disable => { optional => 1 },
  	portal => { fixed => 1 },
@@ -101,15 +97,14 @@
  	sparse => { optional => 1 },
  	comstar_hg => { optional => 1 },
  	comstar_tg => { optional => 1 },
-+	truenas_user => { optional => 1 },
-+	truenas_password => { optional => 1 },
-+	truenas_use_ssl => { optional => 1 },
-+	truenas_apiv4_host => { optional => 1 },
-+	truenas_apikey => { optional => 1 },
++	freenas_user => { optional => 1 },
++	freenas_password => { optional => 1 },
++	freenas_use_ssl => { optional => 1 },
++	freenas_apiv4_host => { optional => 1 },
  	lio_tpg => { optional => 1 },
  	content => { optional => 1 },
  	bwlimit => { optional => 1 },
-@@ -243,6 +285,40 @@
+@@ -243,6 +280,40 @@
  
      my $path = "iscsi://$portal/$target/$lun";
  

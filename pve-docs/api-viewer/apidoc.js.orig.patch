@@ -1,36 +1,29 @@
---- apidoc.js.orig	2025-05-09 19:39:01.728678122 -0600
-+++ apidoc.js	2025-05-09 19:44:10.371692302 -0600
-@@ -52793,6 +52793,38 @@
+--- apidoc.js.orig	2021-11-15 10:07:34.000000000 -0500
++++ apidoc.js	2021-12-06 08:04:01.648822707 -0500
+@@ -44064,6 +44064,31 @@
                             "type" : "string",
                             "typetext" : "<string>"
                          },
-+                        "truenas_user" : {
++                        "freenas_user" : {
 +                           "description" : "FreeNAS user for API access",
 +                           "optional" : 1,
 +                           "type" : "string",
 +                           "typetext" : "<string>"
 +                        },
-+                        "truenas_password" : {
++                        "freenas_password" : {
 +                           "description" : "FreeNAS password for API access",
 +                           "optional" : 1,
 +                           "type" : "string",
 +                           "typetext" : "<string>"
 +                        },
-+                        "truenas_use_ssl" : {
++                        "freenas_use_ssl" : {
 +                           "description" : "FreeNAS API access via SSL",
 +                           "optional" : 1,
 +                           "type" : "boolean",
 +                           "typetext" : "<boolean>"
 +                        },
-+                        "truenas_apiv4_host" : {
++                        "freenas_apiv4_host" : {
 +                           "description" : "FreeNAS API Host via IPv4",
-+                           "format" : "address",
-+                           "optional" : 1,
-+                           "type" : "string",
-+                           "typetext" : "<string>"
-+                        },
-+                        "truenas_apikey" : {
-+                           "description" : "FreeNAS API key",
 +                           "format" : "address",
 +                           "optional" : 1,
 +                           "type" : "string",
@@ -39,7 +32,7 @@
                          "fuse" : {
                             "description" : "Mount CephFS through FUSE.",
                             "optional" : 1,
-@@ -53019,6 +53051,12 @@
+@@ -44275,6 +44300,12 @@
                             "type" : "boolean",
                             "typetext" : "<boolean>"
                          },
@@ -52,38 +45,31 @@
                          "transport" : {
                             "description" : "Gluster transport: tcp or rdma",
                             "enum" : [
-@@ -53320,6 +53358,38 @@
+@@ -44547,6 +44578,31 @@
                       "optional" : 1,
                       "type" : "string",
                       "typetext" : "<string>"
 +                  },
-+                  "truenas_user" : {
++                  "freenas_user" : {
 +                     "description" : "FreeNAS user for API access",
 +                     "optional" : 1,
 +                     "type" : "string",
 +                     "typetext" : "<string>"
 +                  },
-+                  "truenas_password" : {
++                  "freenas_password" : {
 +                     "description" : "FreeNAS password for API access",
 +                     "optional" : 1,
 +                     "type" : "string",
 +                     "typetext" : "<string>"
 +                  },
-+                  "truenas_use_ssl" : {
++                  "freenas_use_ssl" : {
 +                     "description" : "FreeNAS API access via SSL",
 +                     "optional" : 1,
 +                     "type" : "boolean",
 +                     "typetext" : "<boolean>"
 +                  },
-+                  "truenas_apiv4_host" : {
++                  "freenas_apiv4_host" : {
 +                     "description" : "FreeNAS API Host via IPv4",
-+                     "format" : "address",
-+                     "optional" : 1,
-+                     "type" : "string",
-+                     "typetext" : "<string>"
-+                  },
-+                  "truenas_apikey" : {
-+                     "description" : "FreeNAS API key",
 +                     "format" : "address",
 +                     "optional" : 1,
 +                     "type" : "string",
