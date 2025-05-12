@@ -1,4 +1,9 @@
-# TrueNAS ZFS over iSCSI interface 
+# TrueNAS ZFS over iSCSI interface
+
+# THIS PLUGIN IS CURRENTLY ALPHA. THIS REPO IS FOR TESTING AND CODE REVIEW. PLEASE DO NOT RUN THIS IN A PRODUCTION SYSTEM.
+
+## This plugin is based off of https://github.com/TheGrandWazoo/freenas-proxmox. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
+
 
 #### NOTE: Please be aware that this plugin uses the TrueNAS APIs but still uses SSH keys due to the underlying Proxmox VE perl modules that use the `iscsiadm` command.
 
