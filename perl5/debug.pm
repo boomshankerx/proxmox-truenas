@@ -26,7 +26,7 @@ $scfg = {
     'debug'              => 1,
     'truenas_use_ssl'    => 1,
     'target'             => 'iqn.2005-01.com.techgsolutions:proxmox',
-    'pool'               => 'tank',
+    'pool'               => 'tank/proxmox',
 
 };
 
@@ -65,7 +65,8 @@ print "\n#######################################################################
 
 sub simple_check {
     my $client = TrueNAS::Client->new($scfg);
-    print $client->request('system.version');
+    # print $client->request('system.version');
+    print $client->zvol_list();
 }
 
 sub api_check {
