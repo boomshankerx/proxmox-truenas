@@ -1,3 +1,10 @@
+name: Trigger packer
+
+on:
+  push:
+    branches:
+      - main
+
 jobs:
   trigger-build:
     runs-on: ubuntu-latest
