@@ -46,15 +46,12 @@ sub new {
         protocol  => 'jsonrpc',
 
         # Message Handling
-        msg_id  => 0,
-        pending => {},
-        rpc     => JSON::RPC::Common::Marshal::Text->new,
+        msg_id => 0,
+        rpc    => JSON::RPC::Common::Marshal::Text->new,
 
         result => undef,
         error  => undef,
     };
-
-    _log( $args, 'debug' );
 
     # Validation
     unless ( $self->{apikey} || ( $self->{username} && $self->{password} ) ) {
@@ -157,6 +154,33 @@ sub request {
 
 }
 
+# Gracefully close the WebSocket connection
+sub disconnect {
+    my ($self) = @_;
+    return unless $self->{sock};
+
+    _log("Disconnecting");
+
+    eval {
+        my $frame = Protocol::WebSocket::Frame->new(
+            type   => 'close',
+            buffer => '',
+        );
+        print { $self->{sock} } $frame->to_bytes;
+    };
+
+    close( $self->{sock} );
+    $self->{sock}      = undef;
+    $self->{connected} = 0;
+    $self->{auth}      = 0;
+}
+
+# Destructor: ensure the socket is closed on object destruction
+sub DESTROY {
+    my ($self) = @_;
+    $self->disconnect;
+}
+
 sub _authenticate {
     my ($self) = @_;
     my $message;
@@ -165,6 +189,7 @@ sub _authenticate {
     _log( "Authenticating", 'debug' );
 
     if ( $self->{protocol} eq 'ddp' ) {
+
         # Send Connect
         $message = '{ "msg": "connect", "version": "1", "support": ["1"] }';
         $result  = $self->_call($message);
@@ -267,31 +292,164 @@ sub _handle_response {
     return $result;
 }
 
-# Gracefully close the WebSocket connection
-sub disconnect {
-    my ($self) = @_;
-    return unless $self->{sock};
+# HELPERS
 
-    _log("Disconnecting");
+# Simple TrueNAS API query builder. Only handles '='
+sub _build_query {
+    my $params = shift || {};
+    my $result = [];
 
-    eval {
-        my $frame = Protocol::WebSocket::Frame->new(
-            type   => 'close',
-            buffer => '',
-        );
-        print { $self->{sock} } $frame->to_bytes;
-    };
-
-    close( $self->{sock} );
-    $self->{sock}      = undef;
-    $self->{connected} = 0;
-    $self->{auth}      = 0;
+    foreach my $key ( keys %$params ) {
+        my $query = [];
+        my $value = $params->{$key};
+        $value += 0 if ( $value =~ /^\d+$/ );
+        push( @$query,  $key );
+        push( @$query,  '=' );
+        push( @$query,  $value );
+        push( @$result, $query );
+    }
+    return $result;
 }
 
-# Destructor: ensure the socket is closed on object destruction
-sub DESTROY {
+sub _message_gen {
+    my $self   = shift;
+    my $method = shift;
+    my @params = @_;
+
+    my $message;
+    my $id = $self->{msg_id}++;
+
+    @params = _message_sanatize(@params);
+
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        my $rpc = $self->{rpc};
+
+        my $call = JSON::RPC::Common::Procedure::Call->inflate(
+            jsonrpc => '2.0',
+            id      => $id,
+            method  => $method,
+            params  => \@params,
+        );
+        $message = $rpc->call_to_json($call);
+    }
+    elsif ( $self->{protocol} eq 'ddp' ) {
+
+        $message = {
+            msg     => 'method',
+            method  => $method,
+            params  => \@params,
+            id      => $id,
+            version => '1',
+        };
+        $message = encode_json($message);
+
+    }
+
+    return $message;
+}
+
+sub _message_parse {
+    my ( $self, $data ) = @_;
+
+    my $failed = 0;
+    my $result = undef;
+    my $error  = undef;
+
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        my $rpc = $self->{rpc};
+        my $message;
+        $message = $rpc->json_to_return($data);
+        if ( !defined $message->{result} ) {
+            $failed = 1;
+            return ( $failed, undef, undef );
+        }
+        elsif ( defined $message->{error} ) {
+            $error = $message->{error};
+            return ( undef, undef, $error );
+        }
+        else {
+            $result = $message->{result};
+            return ( undef, $result, undef );
+        }
+
+    }
+    elsif ( $self->{protocol} eq 'ddp' ) {
+        my $message;
+        eval { $message = decode_json($data) };
+        if ($@) {
+            $failed = 1;
+            return ( $failed, undef, undef );
+        }
+        if ( $message->{msg} eq 'connected' ) {
+            return ( undef, 1, undef );
+        }
+        if ( $message->{msg} eq 'result' ) {
+            if ( defined $message->{error} ) {
+                return ( undef, undef, $message->{error} );
+            }
+            else {
+                return ( undef, $message->{result}, undef );
+            }
+        }
+
+    }
+}
+
+# Sanitize numbers as strings
+sub _message_sanatize {
+    my @params = @_;
+
+    for my $item (@params) {
+        if ( ref($item) eq 'HASH' ) {
+
+            # Recursively process hash values
+            for my $key ( keys %$item ) {
+                $item->{$key} = ( _message_sanatize( $item->{$key} ) )[0];
+            }
+        }
+        elsif ( ref($item) eq 'ARRAY' ) {
+
+            # Recursively process array elements
+            @$item = _message_sanatize(@$item);
+        }
+        elsif ( !ref($item) && defined($item) && $item =~ /^-?\d*\.?\d+$/ ) {
+
+            # Convert string that looks like a number to a number
+            $item = $item + 0;
+        }
+    }
+
+    return @params;
+}
+
+# EVENTS
+
+sub on_error {
+    my $self  = shift;
+    my $error = shift;
+    my $message;
+
+    if ( $self->{protocol} eq 'jsonrpc' ) {
+        $message = $error->{message};
+    }
+    elsif ( $self->{protocol} eq 'ddp' ) {
+        $message = $error->{type} . " : " . $error->{reason};
+    }
+    $self->{error} = $message;
+    _log( $error, 'error' );
+
+}
+
+# PROPERTIES
+
+sub response {
     my ($self) = @_;
-    $self->disconnect;
+    return $self->{result};
+}
+
+sub has_error {
+    my ($self) = @_;
+    return defined( $self->{error} );
 }
 
 ## ISCSI METHODS
@@ -480,165 +638,75 @@ sub iscsi_lun_nextid {
     return $lun_id;
 }
 
-# EVENTS
+sub snapshot_create {
+    my $self   = shift;
+    my @params = shift;
 
-sub on_error {
-    my $self  = shift;
-    my $error = shift;
-    my $message;
+    my $object = $params[0];
+    my ( $dataset, $name ) = split( '@', $object );
 
-    if ( $self->{protocol} eq 'jsonrpc' ) {
-        $message = $error->{message};
-    }
-    elsif ( $self->{protocol} eq 'ddp' ) {
-        $message = $error->{type} . " : " . $error->{reason};
-    }
-    $self->{error} = $message;
-    _log( $error, 'error' );
-
-}
-
-# PROPERTIES
-
-sub response {
-    my ($self) = @_;
-    return $self->{result};
-}
-
-sub has_error {
-    my ($self) = @_;
-    return defined( $self->{error} );
-}
-
-# HELPERS
-
-# Simple TrueNAS API query builder. Only handles '='
-sub _build_query {
-    my $params = shift || {};
-    my $result = [];
-
-    foreach my $key ( keys %$params ) {
-        my $query = [];
-        my $value = $params->{$key};
-        $value += 0 if ( $value =~ /^\d+$/ );
-        push( @$query,  $key );
-        push( @$query,  '=' );
-        push( @$query,  $value );
-        push( @$result, $query );
+    my $params = { dataset => $dataset, name => $name, };
+    my $result = $self->request( 'zfs.snapshot.create', $params );
+    if ( $self->has_error ) {
+        _log( "Failed to create snapshot: " . $self->{error}, 'error' );
+        return;
     }
     return $result;
 }
 
-sub _message_gen {
+sub snapshot_delete {
     my $self   = shift;
-    my $method = shift;
-    my @params = @_;
+    my @params = shift;
 
-    my $message;
-    my $id = $self->{msg_id}++;
+    my $object = $params[0];
 
-    @params = _message_sanatize(@params);
-
-    if ( $self->{protocol} eq 'jsonrpc' ) {
-        my $rpc = $self->{rpc};
-
-        my $call = JSON::RPC::Common::Procedure::Call->inflate(
-            jsonrpc => '2.0',
-            id      => $id,
-            method  => $method,
-            params  => \@params,
-        );
-        $message = $rpc->call_to_json($call);
+    my $result = $self->request( 'zfs.snapshot.delete', $object );
+    if ( $self->has_error ) {
+        _log( "Failed to delete snapshot: " . $self->{error}, 'error' );
+        return;
     }
-    elsif ( $self->{protocol} eq 'ddp' ) {
-
-        $message = {
-            msg     => 'method',
-            method  => $method,
-            params  => \@params,
-            id      => $id,
-            version => '1',
-        };
-        $message = encode_json($message);
-
-    }
-
-    return $message;
+    return $result;
 }
 
-sub _message_parse {
-    my ( $self, $data ) = @_;
+sub snapshot_rollback {
+    my $self   = shift;
+    my @params = shift;
 
-    my $failed = 0;
-    my $result = undef;
-    my $error  = undef;
+    my $object = $params[0];
 
-    if ( $self->{protocol} eq 'jsonrpc' ) {
-        my $rpc = $self->{rpc};
-        my $message;
-        $message = $rpc->json_to_return($data);
-        if ( !defined $message->{result} ) {
-            $failed = 1;
-            return ( $failed, undef, undef );
-        }
-        elsif ( defined $message->{error} ) {
-            $error = $message->{error};
-            return ( undef, undef, $error );
-        }
-        else {
-            $result = $message->{result};
-            return ( undef, $result, undef );
-        }
-
+    my $result = $self->request( 'zfs.snapshot.rollback', $object );
+    if ( $self->has_error ) {
+        _log( "Failed to rollback snapshot: " . $self->{error}, 'error' );
+        return;
     }
-    elsif ( $self->{protocol} eq 'ddp' ) {
-        my $message;
-        eval { $message = decode_json($data) };
-        if ($@) {
-            $failed = 1;
-            return ( $failed, undef, undef );
-        }
-        if ( $message->{msg} eq 'connected' ) {
-            return ( undef, 1, undef );
-        }
-        if ( $message->{msg} eq 'result' ) {
-            if ( defined $message->{error} ) {
-                return ( undef, undef, $message->{error} );
-            }
-            else {
-                return ( undef, $message->{result}, undef );
-            }
-        }
-
-    }
-
+    return $result;
 }
 
-# Sanitize numbers as strings
-sub _message_sanatize {
-    my @params = @_;
+sub zvol_list {
+    my $self   = shift;
+    my @params = shift;
 
-    for my $item (@params) {
-        if ( ref($item) eq 'HASH' ) {
-
-            # Recursively process hash values
-            for my $key ( keys %$item ) {
-                $item->{$key} = ( _message_sanatize( $item->{$key} ) )[0];
-            }
-        }
-        elsif ( ref($item) eq 'ARRAY' ) {
-
-            # Recursively process array elements
-            @$item = _message_sanatize(@$item);
-        }
-        elsif ( !ref($item) && defined($item) && $item =~ /^-?\d*\.?\d+$/ ) {
-
-            # Convert string that looks like a number to a number
-            $item = $item + 0;
-        }
+    my $query  = [[ 'name', '^', 'tank/proxmox' ], ['type', '=', 'VOLUME']];
+    my $result = $self->request( 'pool.dataset.query', $query, { select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ] } );
+    if ( $self->has_error ) {
+        _log( "Failed to get zvol list: " . $self->{error}, 'error' );
+        return;
+    }
+    my $text = "";
+    for my $item (@$result) {
+        $text .= $item->{name} 
+         . " "
+         . ( $item->{volsize}{rawvalue} // '-' ) 
+         . " "
+         . ( $item->{origin}{rawvalue} || '-' )
+         . " "
+         . ( lc($item->{type}) ) 
+         . " "
+         . ( $item->{refquota}{rawvalue} // '-' )
+         . "\n";
     }
 
-    return @params;
+    return $text;
 }
 
 # Logging Helper
@@ -646,7 +714,7 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
-    if (defined reftype($message)) {
+    if ( defined reftype($message) ) {
         $message = Dumper($message);
     }
 

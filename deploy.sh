@@ -1,6 +1,6 @@
 #!/bin/env bash
 
-rsync -av --relative perl5/ pve-manager/js/pvemanagerlib.js.apikey.patch /usr/share/
+rsync -av --relative perl5/ /usr/share/
 
 #ZFSPlugin
 cd perl5/PVE/Storage
@@ -15,7 +15,7 @@ cd pve-manager/js/
 diff -ruN pvemanagerlib.js.orig pvemanagerlib.js >pvemanagerlib.js.patch
 cd -
 cp -v /usr/share/pve-manager/js/pvemanagerlib.js.orig /usr/share/pve-manager/js/pvemanagerlib.js
-patch -p0 --verbose -d /usr/share/pve-manager/js/ <pve-manager/js/pvemanagerlib.js.apikey.patch
+patch -p0 --verbose -d /usr/share/pve-manager/js/ <pve-manager/js/pvemanagerlib.js.patch
 
 
 # pve-docs/api-viewer

@@ -44,14 +44,17 @@ sub run_lun_command {
 
     truenas_api_check($scfg);
 
-    return _add_view( $scfg, $timeout, @params )        if ( $method eq "add_lu" );
-    return _create_lu( $scfg, $timeout, @params )       if ( $method =~ /^(create|import)_lu$/ );
-    return _delete_lu( $scfg, $timeout, @params )       if ( $method eq "delete_lu" );
-    return _list_extent( $scfg, $timeout, @params )     if ( $method eq "list_extent" );
-    return _list_lu( $scfg, $timeout, 'name', @params ) if ( $method eq "list_lu" );
-    return _list_view( $scfg, $timeout, @params )       if ( $method eq "list_view" );
-    return _modify_lu( $scfg, $timeout, @params )       if ( $method eq "modify_lu" );
-    return ''                                           if ( $method eq "add_view" );
+    return _add_view( $scfg, $timeout, @params )          if ( $method eq "add_lu" );
+    return _create_lu( $scfg, $timeout, @params )         if ( $method =~ /^(create|import)_lu$/ );
+    return _delete_lu( $scfg, $timeout, @params )         if ( $method eq "delete_lu" );
+    return _list_extent( $scfg, $timeout, @params )       if ( $method eq "list_extent" );
+    return _list_lu( $scfg, $timeout, 'name', @params )   if ( $method eq "list_lu" );
+    return _list_view( $scfg, $timeout, @params )         if ( $method eq "list_view" );
+    return _modify_lu( $scfg, $timeout, @params )         if ( $method eq "modify_lu" );
+    return _snapshot_create( $scfg, $timeout, @params )   if ( $method eq "snapshot" );
+    return _snapshot_delete( $scfg, $timeout, @params )   if ( $method eq "destroy" );
+    return _snapshot_rollback( $scfg, $timeout, @params ) if ( $method eq "rollback" );
+    return ''                                             if ( $method eq "add_view" );
 
     _log("Unknown method '$method' called");
 
@@ -295,7 +298,6 @@ sub truenas_api_check {
     return;
 }
 
-
 # Writes the Response and Content to SysLog
 #
 sub truenas_api_log_error {
@@ -328,7 +330,7 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
-    if (defined reftype($message)) {
+    if ( defined reftype($message) ) {
         $message = Dumper($message);
     }
 
