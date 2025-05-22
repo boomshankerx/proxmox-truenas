@@ -1,5 +1,5 @@
 --- ZFSPlugin.pm.orig	2025-05-09 20:27:23.109483798 -0600
-+++ ZFSPlugin.pm	2025-05-13 20:31:54.445518710 -0600
++++ ZFSPlugin.pm	2025-05-14 00:46:23.088663115 -0600
 @@ -10,6 +10,7 @@
  
  use base qw(PVE::Storage::ZFSPoolPlugin);

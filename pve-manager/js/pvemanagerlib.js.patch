@@ -1,5 +1,5 @@
 --- pvemanagerlib.js.orig	2025-05-09 19:00:26.843910202 -0600
-+++ pvemanagerlib.js	2025-05-09 21:59:14.058540215 -0600
++++ pvemanagerlib.js	2025-05-21 21:31:58.020639967 -0600
 @@ -9410,6 +9410,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
@@ -16,7 +16,7 @@
  	    hasWriteCacheOption: true,
  	},
      },
-@@ -60276,10 +60278,29 @@
+@@ -60276,10 +60278,30 @@
  	    },
  	},
  	changeISCSIProvider: function(f, newVal, oldVal) {
@@ -39,6 +39,7 @@
 +		me.lookupReference('truenas_apikey').setValue('');
 +		me.lookupReference('truenas_apikey_field').allowBlank = true;
 +	    } else {
++		me.lookupReference('truenas_use_ssl_field').setValue(true);
 +		me.lookupReference('truenas_user_field').allowBlank = true;
 +		me.lookupReference('truenas_password_field').allowBlank = true;
 +		me.lookupReference('truenas_confirmpw_field').allowBlank = true;
@@ -47,7 +48,7 @@
  	},
      },
  
-@@ -60297,10 +60318,25 @@
+@@ -60297,6 +60319,7 @@
      },
  
      setValues: function(values) {
@@ -55,25 +56,7 @@
  	values.writecache = values.nowritecache ? 0 : 1;
  	this.callParent([values]);
      },
- 
-+    validate: function() {
-+        var me = this;
-+        var user = me.lookupReference('truenas_user_field').getValue();
-+        var pass = me.lookupReference('truenas_password_field').getValue();
-+        var apikey = me.lookupReference('truenas_apikey_field').getValue();
-+
-+        if (!apikey && (!user || !pass)) {
-+            return "Provide either an API key or both username and password.";
-+        }
-+
-+        return true;
-+    },
-+
-+
-     initComponent: function() {
- 	var me = this;
- 
-@@ -60313,7 +60349,7 @@
+@@ -60313,7 +60336,7 @@
  		allowBlank: false,
  	    },
  	    {
@@ -82,7 +65,7 @@
  		name: 'pool',
  		value: '',
  		fieldLabel: gettext('Pool'),
-@@ -60323,11 +60359,11 @@
+@@ -60323,11 +60346,11 @@
  		xtype: me.isCreate ? 'textfield' : 'displayfield',
  		name: 'blocksize',
  		value: '4k',
@@ -96,7 +79,7 @@
  		name: 'target',
  		value: '',
  		fieldLabel: gettext('Target'),
-@@ -60338,9 +60374,34 @@
+@@ -60338,9 +60361,105 @@
  		name: 'comstar_tg',
  		value: '',
  		fieldLabel: gettext('Target group'),
@@ -106,55 +89,6 @@
 +		},
  		allowBlank: true,
  	    },
-+	    {
-+		xtype: 'proxmoxcheckbox',
-+		name: 'truenas_use_ssl',
-+		reference: 'truenas_use_ssl_field',
-+		inputId: 'truenas_use_ssl_field',
-+		checked: false,
-+		bind: {
-+		    hidden: '{!isTrueNAS}'
-+		},
-+		uncheckedValue: 0,
-+		fieldLabel: gettext('API use SSL'),
-+	    },
-+	    {
-+		xtype: 'textfield',
-+		name: 'truenas_user',
-+		reference: 'truenas_user_field',
-+		inputId: 'truenas_user_field',
-+		value: '',
-+		fieldLabel: gettext('API Username'),
-+		bind: {
-+		    hidden: '{!isTrueNAS}'
-+		},
-+	    },
- 	];
- 
- 	me.column2 = [
-@@ -60370,7 +60431,9 @@
- 		xtype: me.isCreate ? 'textfield' : 'displayfield',
- 		name: 'comstar_hg',
- 		value: '',
--		bind: me.isCreate ? { disabled: '{!isComstar}' } : { hidden: '{!isComstar}' },
-+		bind: {
-+		    hidden: '{!isComstar}'
-+		},
- 		fieldLabel: gettext('Host group'),
- 		allowBlank: true,
- 	    },
-@@ -60378,9 +60441,75 @@
- 		xtype: me.isCreate ? 'textfield' : 'displayfield',
- 		name: 'lio_tpg',
- 		value: '',
--		bind: me.isCreate ? { disabled: '{!isLIO}' } : { hidden: '{!isLIO}' },
--		allowBlank: false,
-+		bind: {
-+		    hidden: '{!isLIO}'
-+		},
- 		fieldLabel: gettext('Target portal group'),
-+		allowBlank: true
-+	    },
 +	    {
 +		xtype: 'proxmoxtextfield',
 +		name: 'truenas_apiv4_host',
@@ -166,6 +100,49 @@
 +		    hidden: '{!isTrueNAS}'
 +		},
 +		fieldLabel: gettext('API IPv4 Host'),
++	    },
++	    {
++		xtype: 'proxmoxcheckbox',
++		name: 'truenas_use_ssl',
++		reference: 'truenas_use_ssl_field',
++		inputId: 'truenas_use_ssl_field',
++		checked: true,
++		bind: {
++		    hidden: '{!isTrueNAS}'
++		},
++		uncheckedValue: 0,
++		fieldLabel: gettext('API use SSL'),
++	    },
++	    {
++		xtype: 'proxmoxtextfield',
++		name: 'truenas_apikey',
++		reference: 'truenas_apikey_field',
++		inputType: me.isCreate ? '' : 'password',
++		value: '',
++		editable: true,
++		emptyText: gettext('Requires SSL!'),
++		bind: {
++		    hidden: '{!isTrueNAS}'
++		},
++		fieldLabel: gettext('API key'),
++		validator: function(value) {
++		    var ssl = this.up().down('field[name=truenas_use_ssl]').getValue();
++			if (!ssl && value) {
++				return "TrueNAS requires SSL to use API key.";
++			}
++		    return true;
++		},
++	    },
++	    {
++		xtype: 'textfield',
++		name: 'truenas_user',
++		reference: 'truenas_user_field',
++		inputId: 'truenas_user_field',
++		value: '',
++		fieldLabel: gettext('API Username'),
++		bind: {
++		    hidden: '{!isTrueNAS}'
++		},
 +	    },
 +	    {
 +		xtype: 'proxmoxtextfield',
@@ -206,18 +183,31 @@
 +		    return true;
 +		},
 +	    },
-+	    {
-+		xtype: 'proxmoxtextfield',
-+		name: 'truenas_apikey',
-+		reference: 'truenas_apikey_field',
-+		inputType: me.isCreate ? '' : 'password',
-+		value: '',
-+		editable: true,
-+		emptyText: gettext('Optional if username+password'),
+ 	];
+ 
+ 	me.column2 = [
+@@ -60370,7 +60489,9 @@
+ 		xtype: me.isCreate ? 'textfield' : 'displayfield',
+ 		name: 'comstar_hg',
+ 		value: '',
+-		bind: me.isCreate ? { disabled: '{!isComstar}' } : { hidden: '{!isComstar}' },
 +		bind: {
-+		    hidden: '{!isTrueNAS}'
++		    hidden: '{!isComstar}'
 +		},
-+		fieldLabel: gettext('API key'),
+ 		fieldLabel: gettext('Host group'),
+ 		allowBlank: true,
+ 	    },
+@@ -60378,9 +60499,11 @@
+ 		xtype: me.isCreate ? 'textfield' : 'displayfield',
+ 		name: 'lio_tpg',
+ 		value: '',
+-		bind: me.isCreate ? { disabled: '{!isLIO}' } : { hidden: '{!isLIO}' },
+-		allowBlank: false,
++		bind: {
++		    hidden: '{!isLIO}'
++		},
+ 		fieldLabel: gettext('Target portal group'),
++		allowBlank: true
  	    },
  	];
  
