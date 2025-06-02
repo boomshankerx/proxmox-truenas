@@ -542,7 +542,7 @@ sub iscsi_lun_get {
         return undef;
     }
 
-    $extent->{lunid}  = $targetextent->{id};
+    $extent->{lunid}  = $targetextent->{lunid};
     $extent->{target} = $target_id;
 
     return $extent;
