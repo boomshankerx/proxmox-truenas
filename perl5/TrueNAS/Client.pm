@@ -602,7 +602,7 @@ sub iscsi_lun_delete {
         _log( "LUN not found: $path", 'error' );
         return;
     }
-    my $result = $self->request( 'iscsi.extent.delete', $lun->{id} );
+    my $result = $self->request( 'iscsi.extent.delete', $lun->{id}, 0, 1 ); # Force delete
     if ($result) {
         _log("LUN deleted: $path");
         return 1;
