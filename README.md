@@ -4,7 +4,7 @@
 This plugin is based on https://github.com/TheGrandWazoo/freenas-proxmox. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
 
 ## Install
-1. **Please uninstall the old freenas-proxmox plugin of you have it installed. This plugin is not compatible with the existing config. You will need to recreate your storage once the new plugin is installed.**
+1. **Please uninstall the old freenas-proxmox plugin of you have it installed. This plugin is not compatible with the old config. You will need to recreate your storage once the new plugin is installed.**
 2. Download the latest release of the .deb file to your Proxmox host
 3. Install the .deb package using `sudo apt install <deb>`
 
