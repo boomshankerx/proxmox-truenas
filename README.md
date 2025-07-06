@@ -1,4 +1,4 @@
-# TrueNAS ZFS over iSCSI interface
+# TrueNAS ZFS over iSCSI interface for Proxmox VE 8+
 
 ## Acknowledgement
 This plugin is based on https://github.com/TheGrandWazoo/freenas-proxmox. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
