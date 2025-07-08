@@ -10,7 +10,9 @@ use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 use TrueNAS::Client;
 
-Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
+# Logging
+Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
+my $debug = 1;
 
 # Global variable definitions
 my $MAX_LUNS                  = 255;       # Max LUNS per target  the iSCSI server
@@ -25,7 +27,6 @@ my $truenas_product      = undef;
 my $truenas_version      = undef;
 my $truenas_release_type = "Production";
 
-my $debug = 1;
 
 #
 # Return base path for zvols
@@ -330,6 +331,11 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
+    if ( $level eq 'debug' && !$debug )
+    {
+        return;
+    }
+
     if ( defined reftype($message) ) {
         $message = Dumper($message);
     }
@@ -346,9 +352,7 @@ sub _log {
     $src     = ( split( /::/, $src ) )[-1];
     $message = "[$level_uc]: TrueNAS: $src : $message";
     $log->$level($message);
-    if ($debug) {
-        syslog( "$syslog_map->{$level}", $message );
-    }
+    syslog( "$syslog_map->{$level}", $message );
 }
 
 1;

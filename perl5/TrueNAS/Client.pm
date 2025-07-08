@@ -18,7 +18,8 @@ use Log::Any::Adapter;
 use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 
-my $debug = 1;
+# Logging
+my $debug = 0;
 
 sub new {
     my ( $class, $args ) = @_;
@@ -714,6 +715,11 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
+    if ( $level eq 'debug' && !$debug )
+    {
+        return;
+    }
+
     if ( defined reftype($message) ) {
         $message = Dumper($message);
     }
@@ -730,9 +736,7 @@ sub _log {
     $src     = ( split( /::/, $src ) )[-1];
     $message = "[$level_uc]: TrueNAS: $src : $message";
     $log->$level($message);
-    if ($debug) {
-        syslog( "$syslog_map->{$level}", $message );
-    }
+    syslog( "$syslog_map->{$level}", $message );
 }
 
 1;
