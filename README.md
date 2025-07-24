@@ -24,7 +24,7 @@ libpve-storage-perl 8.3.6
 zfs: nas
     blocksize 16k
     iscsiprovider truenas
-    pool VMFS1/proxmox
+    pool tank/proxmox
     portal 10.0.0.1
     target iqn.2005-10.org.freenas.ctl:proxmox
     content images
