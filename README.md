@@ -19,6 +19,23 @@ libpve-storage-perl 8.3.6
 2. Install the .deb package using `sudo apt install <deb>`
 3. Create ZFS over iSCSI connection
 
+## Example config
+```
+zfs: nas
+    blocksize 16k
+    iscsiprovider truenas
+    pool VMFS1/proxmox
+    portal 10.0.0.1
+    target iqn.2005-10.org.freenas.ctl:proxmox
+    content images
+    nowritecache 0
+    sparse 1
+    truenas_apikey <APIKEY>
+    truenas_apiv4_host 10.0.0.1
+    truenas_use_ssl 1
+    truenas_user admin
+```
+
 This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
 https://www.truenas.com/docs/scale/25.04/scaleuireference/shares/iscsisharesscreens/
 
