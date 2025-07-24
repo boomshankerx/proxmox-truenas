@@ -33,7 +33,8 @@ zfs: nas
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
     truenas_use_ssl 1
-    truenas_user admin
+    truenas_user <USER>
+    truenas_password <PASSWORD>
 ```
 
 This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
