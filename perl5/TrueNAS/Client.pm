@@ -19,7 +19,7 @@ use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 
 # Logging
-my $debug = 1;
+my $debug = 0;
 
 sub new {
     my ( $class, $args ) = @_;

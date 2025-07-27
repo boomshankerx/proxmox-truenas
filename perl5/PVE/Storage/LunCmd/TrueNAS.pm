@@ -11,8 +11,8 @@ use Scalar::Util qw(reftype);
 use TrueNAS::Client;
 
 # Logging
-Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
-my $debug = 1;
+Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
+my $debug = 0;
 
 # Global variable definitions
 my $MAX_LUNS                  = 255;       # Max LUNS per target  the iSCSI server
