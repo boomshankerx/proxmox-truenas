@@ -11,7 +11,7 @@ use Scalar::Util qw(reftype);
 use TrueNAS::Client;
 
 # Logging
-Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
+Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
 my $debug = 1;
 
 # Global variable definitions
@@ -26,7 +26,6 @@ my $dev_prefix                = "/dev/";
 my $truenas_product      = undef;
 my $truenas_version      = undef;
 my $truenas_release_type = "Production";
-
 
 #
 # Return base path for zvols
@@ -43,7 +42,7 @@ sub run_lun_command {
 
     _log(" $timeout : $method : @params");
 
-    truenas_api_check($scfg);
+    truenas_client_init($scfg);
 
     return _add_view( $scfg, $timeout, @params )          if ( $method eq "add_lu" );
     return _create_lu( $scfg, $timeout, @params )         if ( $method =~ /^(create|import)_lu$/ );
@@ -89,43 +88,6 @@ sub _create_lu {
     return "";
 }
 
-# #
-# #
-# #
-# sub _create_lu {
-#     my ( $scfg, $timeout, @params ) = @_;
-#     my $lun_path = $params[0];
-
-#     _log($lun_path);
-
-#     my $lun_id = truenas_iscsi_targetextent_nextid($scfg);
-
-#     die "Maximum number of LUNs per target is $MAX_LUNS"
-#       if scalar $lun_id >= $MAX_LUNS;
-
-#     die "$params[0]: LUN $lun_path exists"
-#       if defined( _list_lu( $scfg, $timeout, "path", @params ) );
-
-#     my $target_id = truenas_iscsi_target_id($scfg);
-#     die "Unable to find the target id for $scfg->{target}"
-#       if !defined($target_id);
-
-#     # Create the extent
-#     my $extent = truenas_iscsi_extent_create( $scfg, $lun_path );
-
-#     # Associate the new extent to the target
-#     my $link = truenas_iscsi_targetextent_create( $scfg, $target_id, $extent->{'id'}, $lun_id );
-
-#     if ( defined($link) ) {
-#         _log( "$lun_path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
-#     }
-#     else {
-#         die "Unable to create lun $lun_path";
-#     }
-
-#     return "";
-# }
-
 #
 # Delete a lun
 #
@@ -147,34 +109,6 @@ sub _delete_lu {
     return "";
 }
 
-#
-# Delete a lun
-#
-# sub _delete_lu {
-#     my ( $scfg, $timeout, @params ) = @_;
-#     my $lun_path = $params[0];
-
-#     _log("$lun_path");
-
-#     $lun_path =~ s/^\Q$dev_prefix//;
-#     my $lun = truenas_iscsi_extent_get( $scfg, { path => $lun_path } );
-
-#     if ( !defined($lun) ) {
-#         die "Unable to find the lun $lun_path for $scfg->{target}";
-#     }
-
-#     # Remove the extent
-#     my $remove_extent = truenas_iscsi_extent_delete( $scfg, $lun->{id} );
-
-#     if ( $remove_extent == 1 ) {
-#         _log( $lun_path . " Deleted" );
-#     }
-#     else {
-#         die "Unable to delete lun $lun_path";
-#     }
-
-#     return "";
-# }
 
 #
 #
@@ -248,7 +182,7 @@ sub _modify_lu {
 
 #
 # Connect to the TrueNAS API service
-sub truenas_api_connect {
+sub truenas_client_connect {
     my ($scfg) = @_;
 
     _log("Called");
@@ -274,7 +208,7 @@ sub truenas_api_connect {
 
 # Check to see what TrueNAS version we are running and set
 # the TrueNAS.pm to use the correct API version of TrueNAS
-sub truenas_api_check {
+sub truenas_client_init {
     my ( $scfg, $timeout ) = @_;
     my $result = {};
     my $apihost =
@@ -285,10 +219,11 @@ sub truenas_api_check {
     _log("Called");
 
     if ( !defined $truenas_server_list->{$apihost} ) {
-        $result = truenas_api_connect($scfg);
+        $result = truenas_client_connect($scfg);
         _log( "Version: " . $result );
     }
     else {
+        $truenas_client->set_target( $scfg->{target} );
         _log("Websocket Client already initialized");
     }
 
@@ -331,8 +266,7 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
-    if ( $level eq 'debug' && !$debug )
-    {
+    if ( $level eq 'debug' && !$debug ) {
         return;
     }
 

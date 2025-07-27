@@ -19,7 +19,7 @@ use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 
 # Logging
-my $debug = 0;
+my $debug = 1;
 
 sub new {
     my ( $class, $args ) = @_;
@@ -27,14 +27,14 @@ sub new {
     _log( $args, 'debug' );
 
     my $self = {
-        host      => $args->{truenas_apiv4_host} || croak("Host is required"),
-        username  => $args->{truenas_user},
-        password  => $args->{truenas_password},
-        secure    => $args->{truenas_use_ssl} || 0,
-        apikey    => $args->{truenas_apikey},
-        iqn       => $args->{target},
-        target    => undef,
-        target_id => undef,
+        host     => $args->{truenas_apiv4_host} || croak("Host is required"),
+        username => $args->{truenas_user},
+        password => $args->{truenas_password},
+        secure   => $args->{truenas_use_ssl} || 0,
+        apikey   => $args->{truenas_apikey},
+        iqn      => $args->{target},
+        target   => undef,
+        targets  => {},
 
         # Client
         client    => undef,
@@ -59,12 +59,14 @@ sub new {
         croak("Either apikey or username/password must be provided");
     }
 
+    # Set the target if provided
+    set_target( $self, $self->{iqn} );
+
     # Build URLs for both endpoints
     my $scheme = $self->{secure} ? "wss://" : "ws://";
     $self->{endpoints} = [ { url => $scheme . $self->{host} . "/api/current", protocol => 'jsonrpc' }, { url => $scheme . $self->{host} . "/websocket", protocol => 'ddp' } ];
 
     # Extract target
-    $self->{target} = ( split( /:/, $self->{iqn} ) )[-1];
 
     bless $self, $class;
     return $self;
@@ -448,6 +450,17 @@ sub response {
     return $self->{result};
 }
 
+sub set_target {
+    my ( $self, $iqn ) = @_;
+
+    $self->{target} = ( split( /:/, $iqn ) )[-1];
+
+    if ( !$self->{target} ) {
+        croak("Invalid IQN format, expected 'iqn:target'");
+    }
+    _log( "Target set to: " . $self->{target}, 'debug' );
+}
+
 sub has_error {
     my ($self) = @_;
     return defined( $self->{error} );
@@ -479,28 +492,28 @@ sub iscsi_target_getid {
     my $self        = shift;
     my $target_name = shift;
 
-    if ( defined $self->{target_id} ) {
-        return $self->{target_id};
+    # Check target cache first
+    if ( defined $self->{targets}{$target_name} ) {
+        return $self->{targets}{$target_name};
     }
 
+    # If not cached, query the target
+    my $query  = _build_query( { name => $target_name } );
+    my $result = $self->request( 'iscsi.target.query', $query, {} );
+    if ( $self->{error} ) {
+        _log( "Failed to get target ID: " . $self->{error}, 'error' );
+        return;
+    }
+    if ($result) {
+        $result = $result->[0];
+        $self->{targets}{$target_name} = $result->{id};
+        _log( "Target ID for $target_name: " . $result->{id}, 'debug' );
+        return $result->{id};
+    }
     else {
-
-        my $query  = _build_query( { name => $target_name } );
-        my $result = $self->request( 'iscsi.target.query', $query, {} );
-        if ( $self->{error} ) {
-            _log( "Failed to get target ID: " . $self->{error}, 'error' );
-            return;
-        }
-        if ($result) {
-            $result = $result->[0];
-            $self->{target_id} = $result->{id};
-            return $self->{target_id};
-        }
-        else {
-            return undef;
-        }
-
+        return undef;
     }
+
 }
 
 sub iscsi_targetextent_query {
@@ -576,7 +589,7 @@ sub iscsi_lun_create {
     }
 
     # Create targetextent
-    $params = { target => $self->{target_id}, extent => $extent->{id}, lunid => $lun_id };
+    $params = { target => $target_id, extent => $extent->{id}, lunid => $lun_id };
     my $targetextent = $self->request( 'iscsi.targetextent.create', $params );
     if ( $self->has_error ) {
         _log( "Failed to create target extent: " . $self->{error}, 'error' );
@@ -603,7 +616,7 @@ sub iscsi_lun_delete {
         _log( "LUN not found: $path", 'error' );
         return;
     }
-    my $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 ); # Force delete
+    my $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
     if ($result) {
         _log("LUN deleted: $path");
         return 1;
@@ -687,7 +700,7 @@ sub zvol_list {
     my $self   = shift;
     my @params = shift;
 
-    my $query  = [[ 'name', '^', 'tank/proxmox' ], ['type', '=', 'VOLUME']];
+    my $query  = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
     my $result = $self->request( 'pool.dataset.query', $query, { select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ] } );
     if ( $self->has_error ) {
         _log( "Failed to get zvol list: " . $self->{error}, 'error' );
@@ -695,16 +708,7 @@ sub zvol_list {
     }
     my $text = "";
     for my $item (@$result) {
-        $text .= $item->{name} 
-         . " "
-         . ( $item->{volsize}{rawvalue} // '-' ) 
-         . " "
-         . ( $item->{origin}{rawvalue} || '-' )
-         . " "
-         . ( lc($item->{type}) ) 
-         . " "
-         . ( $item->{refquota}{rawvalue} // '-' )
-         . "\n";
+        $text .= $item->{name} . " " . ( $item->{volsize}{rawvalue} // '-' ) . " " . ( $item->{origin}{rawvalue} || '-' ) . " " . ( lc( $item->{type} ) ) . " " . ( $item->{refquota}{rawvalue} // '-' ) . "\n";
     }
 
     return $text;
@@ -715,8 +719,7 @@ sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
-    if ( $level eq 'debug' && !$debug )
-    {
+    if ( $level eq 'debug' && !$debug ) {
         return;
     }
 
