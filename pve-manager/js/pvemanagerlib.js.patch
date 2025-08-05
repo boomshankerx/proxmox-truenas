@@ -1,5 +1,5 @@
 --- pvemanagerlib.js.848	2025-08-05 13:39:47.394294178 -0600
-+++ pvemanagerlib.js	2025-08-05 13:55:43.580755659 -0600
++++ pvemanagerlib.js	2025-08-05 14:28:21.905099183 -0600
 @@ -9729,6 +9729,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
@@ -71,7 +71,7 @@
                  name: 'target',
                  value: '',
                  fieldLabel: gettext('Target'),
-@@ -62709,9 +62732,105 @@
+@@ -62709,9 +62732,108 @@
                  name: 'comstar_tg',
                  value: '',
                  fieldLabel: gettext('Target group'),
@@ -113,6 +113,7 @@
 +                inputType: me.isCreate ? '' : 'password',
 +                value: '',
 +                editable: true,
++                deleteEmpty: !me.isCreate,
 +                emptyText: gettext('Requires SSL!'),
 +                bind: {
 +                    hidden: '{!isTrueNAS}'
@@ -144,6 +145,7 @@
 +                inputType: me.isCreate ? '' : 'password',
 +                value: '',
 +                editable: true,
++                deleteEmpty: !me.isCreate,
 +                emptyText: Proxmox.Utils.noneText,
 +                bind: {
 +                    hidden: '{!isTrueNAS}'
@@ -162,6 +164,7 @@
 +                inputType: me.isCreate ? '' : 'password',
 +                value: '',
 +                editable: true,
++                deleteEmpty: !me.isCreate,
 +                submitValue: false,
 +                emptyText: Proxmox.Utils.noneText,
 +                bind: {
@@ -179,7 +182,7 @@
          ];
  
          me.column2 = [
-@@ -62743,7 +62862,9 @@
+@@ -62743,7 +62865,9 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'comstar_hg',
                  value: '',
@@ -190,7 +193,7 @@
                  fieldLabel: gettext('Host group'),
                  allowBlank: true,
              },
-@@ -62751,9 +62872,11 @@
+@@ -62751,9 +62875,11 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'lio_tpg',
                  value: '',

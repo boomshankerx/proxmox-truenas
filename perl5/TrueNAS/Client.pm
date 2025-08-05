@@ -37,14 +37,15 @@ sub new {
         targets  => {},
 
         # Client
-        client    => undef,
-        conn      => undef,
-        timeout   => 10,
-        connected => 0,
-        auth      => 0,
-        sock      => undef,
-        frame     => Protocol::WebSocket::Frame->new(),
-        protocol  => 'jsonrpc',
+        auth        => 0,
+        client      => undef,
+        conn        => undef,
+        connected   => 0,
+        frame       => Protocol::WebSocket::Frame->new(),
+        max_retries => 3,
+        protocol    => 'jsonrpc',
+        sock        => undef,
+        timeout     => 10,
 
         # Message Handling
         msg_id => 0,
@@ -72,7 +73,93 @@ sub new {
     return $self;
 }
 
-sub connect {
+sub request {
+    my ( $self, $method, @params ) = @_;
+
+    _log( $method, 'debug' );
+
+    unless ( $self->_is_connected() && $self->{auth} ) {
+        _log( "Connecting...", 'info' );
+        my $retry_count = 0;
+        my $backoff     = 1;
+        while ( !$self->_is_connected() && !$self->{auth} && $retry_count < $self->{max_retries} ) {
+            eval {
+                $self->_connect();
+                $self->_authenticate();
+            };
+            if ($@) {
+                _log( "Reconnect attempt $retry_count failed: $@", 'error' );
+                sleep $backoff;
+                $backoff = ( $backoff < 8 ) ? $backoff * 2 : $backoff;    # Cap at 8s
+                $retry_count++;
+                next;
+            }
+            last;
+        }
+        croak "Failed to reconnect after $self->{max_retries} attempts: $@" if $retry_count >= $self->{max_retries};
+    }
+
+    my ( $result, $error );
+
+    # Construct message
+    my $message = _message_gen( $self, $method, @params );
+    _log( $message, 'debug' );
+
+    $result = _call( $self, $message );
+    return $result;
+
+}
+
+sub _authenticate {
+    my ($self) = @_;
+    my $message;
+    my $result;
+
+    _log( "Authenticating", 'debug' );
+
+    if ( $self->{protocol} eq 'ddp' ) {
+
+        # Send Connect
+        $message = '{ "msg": "connect", "version": "1", "support": ["1"] }';
+        $result  = $self->_call($message);
+    }
+
+    if ( $self->{apikey} ) {
+        $message = $self->_message_gen( 'auth.login_with_api_key', $self->{apikey} );
+        $result  = $self->_call($message);
+    }
+    else {
+        $message = $self->_message_gen( 'auth.login', $self->{username}, $self->{password} );
+        $result  = $self->_call($message);
+    }
+
+    if ($result) {
+        $self->{auth} = 1;
+        _log("Authenticated");
+    }
+    else {
+        $self->{auth} = 0;
+        _log( "Authentication failed", 'error' );
+        croak "Authentication failed";
+        return;
+    }
+}
+
+# Reads WebSocket response with timeout and returns decoded result
+sub _call {
+    my $self    = shift;
+    my $message = shift;
+    my $timeout = shift // $self->{timeout};
+
+    _log( $message, 'debug' );
+
+    my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
+    $self->_send( $frame->to_bytes );
+
+    return $self->_receive($timeout);
+}
+
+sub _connect {
     my ($self) = @_;
 
     my $sock;
@@ -136,29 +223,8 @@ sub connect {
 
 }
 
-sub request {
-    my ( $self, $method, @params ) = @_;
-
-    _log( $method, 'debug' );
-
-    if ( !$self->{connected} || !$self->{auth} ) {
-        $self->connect();
-        $self->_authenticate();
-    }
-
-    my ( $result, $error );
-
-    # Construct message
-    my $message = _message_gen( $self, $method, @params );
-    _log( $message, 'debug' );
-
-    $result = _call( $self, $message );
-    return $result;
-
-}
-
 # Gracefully close the WebSocket connection
-sub disconnect {
+sub _disconnect {
     my ($self) = @_;
     return unless $self->{sock};
 
@@ -176,103 +242,6 @@ sub disconnect {
     $self->{sock}      = undef;
     $self->{connected} = 0;
     $self->{auth}      = 0;
-}
-
-# Destructor: ensure the socket is closed on object destruction
-sub DESTROY {
-    my ($self) = @_;
-    $self->disconnect;
-}
-
-sub _authenticate {
-    my ($self) = @_;
-    my $message;
-    my $result;
-
-    _log( "Authenticating", 'debug' );
-
-    if ( $self->{protocol} eq 'ddp' ) {
-
-        # Send Connect
-        $message = '{ "msg": "connect", "version": "1", "support": ["1"] }';
-        $result  = $self->_call($message);
-    }
-
-    if ( $self->{apikey} ) {
-        $message = $self->_message_gen( 'auth.login_with_api_key', $self->{apikey} );
-        $result  = $self->_call($message);
-    }
-    else {
-        $message = $self->_message_gen( 'auth.login', $self->{username}, $self->{password} );
-        $result  = $self->_call($message);
-    }
-
-    if ($result) {
-        $self->{auth} = 1;
-        _log("Authenticated");
-    }
-    else {
-        $self->{auth} = 0;
-        _log( "Authentication failed", 'error' );
-        croak "Authentication failed";
-        return;
-    }
-}
-
-# Reads WebSocket response with timeout and returns decoded result
-sub _call {
-    my $self    = shift;
-    my $message = shift;
-    my $timeout = shift // $self->{timeout};
-
-    _log( $message, 'debug' );
-
-    my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
-    $self->_send( $frame->to_bytes );
-
-    return $self->_receive($timeout);
-}
-
-sub _send {
-    my ( $self, $bytes ) = @_;
-
-    my $written = syswrite( $self->{sock}, $bytes );
-    croak "Write failed: $!" unless defined $written;
-}
-
-sub _receive {
-    my $self    = shift;
-    my $timeout = shift;
-    my $start   = time;
-    my $buffer;
-
-    while ( ( time - $start ) < $timeout ) {
-        my $read;
-        my $chunk;
-
-        do {
-            $read = sysread( $self->{sock}, $chunk, 65536 );
-            if ( !defined($read) ) {
-                next if $! == EINTR;
-                croak "Read failed: $!";
-            }
-            elsif ( $read == 0 ) {
-                _log( "Connection closed by remote host", 'warn' );
-                $self->disconnect;
-                return;
-            }
-        } while ( !defined($read) );
-
-        $self->{frame}->append($chunk);
-
-        while ( my $response = $self->{frame}->next ) {
-            return $self->_handle_response($response);
-        }
-
-        select( undef, undef, undef, 0.01 );    # avoid tight loop
-    }
-
-    croak "Timeout waiting for response after ${timeout}s";
 }
 
 # Handle incoming JSON-RPC responses
@@ -293,6 +262,73 @@ sub _handle_response {
     $self->{result} = $result;
     _log( "Result: " . Dumper($result), 'debug' );
     return $result;
+}
+
+# Check if the socket is connected
+sub _is_connected {
+    my ($self) = @_;
+    return 0 unless $self->{sock} && $self->{connected};
+    if ( $self->{sock}->connected ) {
+        _log( "Socket is open", 'debug' );
+        return 1;
+    }
+    else {
+        _log( "Socket is closed", 'error' );
+        $self->{connected} = 0;
+        $self->{sock}      = undef;
+        $self->{auth}      = 0;
+        return 0;
+    }
+}
+
+# Send data over the WebSocket
+sub _send {
+    my ( $self, $bytes ) = @_;
+
+    my $written = syswrite( $self->{sock}, $bytes );
+    croak "Write failed: $!" unless defined $written;
+}
+
+# Recieve data from the WebSocket with timeout
+sub _receive {
+    my $self    = shift;
+    my $timeout = shift;
+    my $start   = time;
+    my $buffer;
+
+    while ( ( time - $start ) < $timeout ) {
+        my $read;
+        my $chunk;
+
+        do {
+            $read = sysread( $self->{sock}, $chunk, 65536 );
+            if ( !defined($read) ) {
+                next if $! == EINTR;
+                croak "Read failed: $!";
+            }
+            elsif ( $read == 0 ) {
+                _log( "Connection closed by remote host", 'warn' );
+                $self->_disconnect;
+                return;
+            }
+        } while ( !defined($read) );
+
+        $self->{frame}->append($chunk);
+
+        while ( my $response = $self->{frame}->next ) {
+            return $self->_handle_response($response);
+        }
+
+        select( undef, undef, undef, 0.01 );    # avoid tight loop
+    }
+
+    croak "Timeout waiting for response after ${timeout}s";
+}
+
+# Destructor: ensure the socket is closed on object destruction
+sub DESTROY {
+    my ($self) = @_;
+    $self->_disconnect;
 }
 
 # HELPERS
