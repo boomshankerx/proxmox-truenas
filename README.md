@@ -5,8 +5,8 @@ This plugin is based on https://github.com/TheGrandWazoo/freenas-proxmox. It has
 
 ## Compatibility
 Proxmox VE 8.4.1  
-pve-manager 8.4.5  
-libpve-storage-perl 8.3.6  
+pve-manager 8.4.8  
+libpve-storage-perl 8.3.7  
 
 ## Migrating from freenas-proxmox
 1. **Uninstall the old freenas-proxmox plugin if you have it installed. `storage.cfg` settings are not compatible between plugins. You can either remove and recreate your connection or edit storage.cfg replacing 'freenas' with 'truenas'

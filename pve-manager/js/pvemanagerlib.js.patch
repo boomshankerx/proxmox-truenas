@@ -1,5 +1,5 @@
---- pvemanagerlib.js.orig	2025-07-22 22:26:46.090673009 -0600
-+++ pvemanagerlib.js	2025-07-22 22:49:54.196901343 -0600
+--- pvemanagerlib.js.848	2025-08-05 13:39:47.394294178 -0600
++++ pvemanagerlib.js	2025-08-05 13:55:43.580755659 -0600
 @@ -9729,6 +9729,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
