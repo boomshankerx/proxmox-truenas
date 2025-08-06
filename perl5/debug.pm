@@ -65,9 +65,8 @@ print "\n#######################################################################
 
 sub simple_check {
     my $client = TrueNAS::Client->new($scfg);
-    print $client->request('system.version');
-    sleep(60);
-    print $client->zvol_list();
+    print $client->request('system.version'). "\n";
+    print $client->request('system.info') . "\n";
 }
 
 sub api_check {

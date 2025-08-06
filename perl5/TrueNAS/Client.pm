@@ -77,7 +77,7 @@ sub new {
 sub request {
     my ( $self, $method, @params ) = @_;
 
-    _log( $method, 'debug' );
+    _log($method);
 
     unless ( $self->_is_connected() && $self->{auth} ) {
         _log( "Connecting...", 'info' );
@@ -136,15 +136,30 @@ sub _call {
     my $self    = shift;
     my $message = shift;
     my $timeout = shift // $self->{timeout};
+    my $result;
+    my $response;
 
     _log( $message, 'debug' );
 
     $self->{lastcall} = time;
 
-    my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
-    $self->_send( $frame->to_bytes );
+    $self->_send($message);
 
-    return $self->_receive($timeout);
+    eval { $response = $self->_receive($timeout); };
+    if ($@) {
+        _log( "Receive failed: $@", 'error' );
+        $self->_disconnect;
+        return;
+    }
+    if ( !defined $response ) {
+        _log( "No response received", 'error' );
+        $self->_disconnect;
+        return;
+    }
+
+    $result = $self->_handle_response($response);
+    return $result;
+
 }
 
 sub _connect {
@@ -257,19 +272,36 @@ sub _is_connected {
     my ($self) = @_;
     return 0 unless $self->{sock} && $self->{connected};
 
-    if (time - $self->{lastcall} >= 45){
+    if ( time - $self->{lastcall} >= 60 ) {
         _log("Connection timed out");
+        $self->_disconnect;
         return 0;
     }
 
+    _log("Pinging server...");
+    my $message = $self->_message_gen('core.ping');
+    $self->_send($message);
+    my $response = $self->_receive(2);    # Wait for pong response
+    if ( !defined $response ) {
+        _log( "Ping failed", 'error' );
+        $self->_disconnect;
+        return 0;
+    }
+    my $result = $self->_handle_response($response);
+    if ( $result ne 'pong' ) {
+        _log( "Ping failed", 'error' );
+        $self->_disconnect;
+        return 0;
+    }
+    return 1;
 }
 
 # Send data over the WebSocket
 sub _send {
-    my ( $self, $bytes ) = @_;
-
-    my $written = syswrite( $self->{sock}, $bytes );
-    croak "Write failed: $!" unless defined $written;
+    my ( $self, $message ) = @_;
+    my $frame  = Protocol::WebSocket::Frame->new($message);
+    my $result = syswrite( $self->{sock}, $frame->to_bytes );
+    croak "Write failed: $!" unless defined $result;
 }
 
 # Recieve data from the WebSocket with timeout
@@ -290,16 +322,15 @@ sub _receive {
                 croak "Read failed: $!";
             }
             elsif ( $read == 0 ) {
-                _log( "Connection closed by remote host", 'warn' );
+                _log( "Connection closed", 'warn' );
                 $self->_disconnect;
                 return;
             }
         } while ( !defined($read) );
 
         $self->{frame}->append($buffer);
-
         while ( my $response = $self->{frame}->next ) {
-            return $self->_handle_response($response);
+            return $response;
         }
 
         select( undef, undef, undef, 0.01 );    # avoid tight loop
