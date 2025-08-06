@@ -268,17 +268,23 @@ sub _handle_response {
 sub _is_connected {
     my ($self) = @_;
     return 0 unless $self->{sock} && $self->{connected};
-    if ( $self->{sock}->connected ) {
-        _log( "Socket is open", 'debug' );
-        return 1;
-    }
-    else {
-        _log( "Socket is closed", 'error' );
-        $self->{connected} = 0;
-        $self->{sock}      = undef;
-        $self->{auth}      = 0;
+
+    # Perform a non-blocking peek to verify socket usability
+    my $buffer;
+    my $read = sysread($self->{sock}, $buffer, 1, 0);
+    if (!defined $read) {
+        _log("Socket is closed or unusable: $!", 'error');
+        $self->_disconnect;
         return 0;
     }
+    if ($read == 0) {
+        _log("Socket is closed (EOF detected)", 'error');
+        $self->_disconnect;
+        return 0;
+    }
+
+    _log("Socket is open", 'debug');
+    return 1;
 }
 
 # Send data over the WebSocket

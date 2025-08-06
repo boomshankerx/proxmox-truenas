@@ -4,7 +4,7 @@
 This plugin is based on https://github.com/TheGrandWazoo/freenas-proxmox. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
 
 ## Compatibility
-Proxmox VE 8.4.1  
+Proxmox VE 8.4.8  
 pve-manager 8.4.8  
 libpve-storage-perl 8.3.7  
 
