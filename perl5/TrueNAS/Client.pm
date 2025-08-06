@@ -46,6 +46,7 @@ sub new {
         protocol    => 'jsonrpc',
         sock        => undef,
         timeout     => 10,
+        lastcall    => undef,
 
         # Message Handling
         msg_id => 0,
@@ -80,23 +81,8 @@ sub request {
 
     unless ( $self->_is_connected() && $self->{auth} ) {
         _log( "Connecting...", 'info' );
-        my $retry_count = 0;
-        my $backoff     = 1;
-        while ( !$self->_is_connected() && !$self->{auth} && $retry_count < $self->{max_retries} ) {
-            eval {
-                $self->_connect();
-                $self->_authenticate();
-            };
-            if ($@) {
-                _log( "Reconnect attempt $retry_count failed: $@", 'error' );
-                sleep $backoff;
-                $backoff = ( $backoff < 8 ) ? $backoff * 2 : $backoff;    # Cap at 8s
-                $retry_count++;
-                next;
-            }
-            last;
-        }
-        croak "Failed to reconnect after $self->{max_retries} attempts: $@" if $retry_count >= $self->{max_retries};
+        $self->_connect();
+        $self->_authenticate();
     }
 
     my ( $result, $error );
@@ -152,6 +138,8 @@ sub _call {
     my $timeout = shift // $self->{timeout};
 
     _log( $message, 'debug' );
+
+    $self->{lastcall} = time;
 
     my $frame = Protocol::WebSocket::Frame->new( buffer => $message );
     $self->_send( $frame->to_bytes );
@@ -269,22 +257,11 @@ sub _is_connected {
     my ($self) = @_;
     return 0 unless $self->{sock} && $self->{connected};
 
-    # Perform a non-blocking peek to verify socket usability
-    my $buffer;
-    my $read = sysread($self->{sock}, $buffer, 1, 0);
-    if (!defined $read) {
-        _log("Socket is closed or unusable: $!", 'error');
-        $self->_disconnect;
-        return 0;
-    }
-    if ($read == 0) {
-        _log("Socket is closed (EOF detected)", 'error');
-        $self->_disconnect;
+    if (time - $self->{lastcall} >= 45){
+        _log("Connection timed out");
         return 0;
     }
 
-    _log("Socket is open", 'debug');
-    return 1;
 }
 
 # Send data over the WebSocket
@@ -304,10 +281,10 @@ sub _receive {
 
     while ( ( time - $start ) < $timeout ) {
         my $read;
-        my $chunk;
+        my $buffer;
 
         do {
-            $read = sysread( $self->{sock}, $chunk, 65536 );
+            $read = sysread( $self->{sock}, $buffer, 65536 );
             if ( !defined($read) ) {
                 next if $! == EINTR;
                 croak "Read failed: $!";
@@ -319,7 +296,7 @@ sub _receive {
             }
         } while ( !defined($read) );
 
-        $self->{frame}->append($chunk);
+        $self->{frame}->append($buffer);
 
         while ( my $response = $self->{frame}->next ) {
             return $self->_handle_response($response);
