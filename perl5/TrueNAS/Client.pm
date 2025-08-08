@@ -141,8 +141,6 @@ sub _call {
 
     _log( $message, 'debug' );
 
-    $self->{lastcall} = time;
-
     $self->_send($message);
 
     eval { $response = $self->_receive($timeout); };
@@ -238,7 +236,7 @@ sub _disconnect {
             type   => 'close',
             buffer => '',
         );
-        print { $self->{sock} } $frame->to_bytes;
+        syswrite( $self->{sock}, $frame->to_bytes );
     };
 
     close( $self->{sock} );
@@ -270,6 +268,7 @@ sub _handle_response {
 # Check if the socket is connected
 sub _is_connected {
     my ($self) = @_;
+
     return 0 unless $self->{sock} && $self->{connected};
 
     if ( time - $self->{lastcall} >= 60 ) {
@@ -278,21 +277,25 @@ sub _is_connected {
         return 0;
     }
 
-    _log("Pinging server...");
-    my $message = $self->_message_gen('core.ping');
-    $self->_send($message);
-    my $response = $self->_receive(2);    # Wait for pong response
-    if ( !defined $response ) {
-        _log( "Ping failed", 'error' );
-        $self->_disconnect;
-        return 0;
+    if ( time - $self->{lastcall} >= 30 ) {
+        _log("Ping");
+        my $message = $self->_message_gen('core.ping');
+        $self->_send($message);
+        my $response = $self->_receive(2);    # Wait for pong response
+        if ( !defined $response ) {
+            _log( "Ping failed", 'error' );
+            $self->_disconnect;
+            return 0;
+        }
+        my $result = $self->_handle_response($response);
+        if ( $result ne 'pong' ) {
+            _log( "Ping failed", 'error' );
+            $self->_disconnect;
+            return 0;
+        }
+        _log("Pong");
     }
-    my $result = $self->_handle_response($response);
-    if ( $result ne 'pong' ) {
-        _log( "Ping failed", 'error' );
-        $self->_disconnect;
-        return 0;
-    }
+
     return 1;
 }
 
@@ -330,6 +333,7 @@ sub _receive {
 
         $self->{frame}->append($buffer);
         while ( my $response = $self->{frame}->next ) {
+            $self->{lastcall} = time;
             return $response;
         }
 
