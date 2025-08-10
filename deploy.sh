@@ -6,9 +6,9 @@ dpkg-query -W libpve-storage-perl
 PATH_APIDocs="/usr/share/pve-docs/api-viewer/apidocs.js"
 PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
-PATCH_ARGS="-b -p0 --ignore-whitespace --verbose"
+PATCH_ARGS="-p0 -b --ignore-whitespace --verbose"
 
-ver_major=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
+ver=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
 
 
 POSITIONAL_ARGS=()
@@ -40,14 +40,14 @@ fi
 
 # Patching ZFSPlugin.pm
 echo "[+] Patching ZFSPlugin.pm..."
-patch ${PATCH_ARGS} -d /usr/share/perl5/PVE/Storage < perl5/PVE/Storage/ZFSPlugin.pm.${ver_major}.patch
+patch ${PATCH_ARGS} -d /usr/share/perl5/PVE/Storage < perl5/PVE/Storage/ZFSPlugin.pm.${ver}.patch
 
 # Patching pvemanagerlib.js
 echo "[+] Patching pvemanagerlib.js..."
-patch ${PATCH_ARGS} -d /usr/share/pve-manager/js < pve-manager/js/pvemanagerlib.js.${ver_major}.patch
+patch ${PATCH_ARGS} -d /usr/share/pve-manager/js < pve-manager/js/pvemanagerlib.js.${ver}.patch
 
-echo "[+] Patching API docs..."
-patch ${PATCH_ARGS} -d /usr/share/pve-docs/api-viewer < pve-docs/api-viewer/apidoc.js.${ver_major}.patch
+# echo "[+] Patching API docs..."
+# patch ${PATCH_ARGS} -d /usr/share/pve-docs/api-viewer < pve-docs/api-viewer/apidoc.js.${ver}.patch
 
 echo "[+] Copying TrueNAS Client..."
 rsync perl5/TrueNAS /usr/share/perl5/ -av --delete
