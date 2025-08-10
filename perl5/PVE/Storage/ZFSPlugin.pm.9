@@ -300,6 +300,8 @@ sub on_add_hook {
                 log_warn($message);
                 $base_path = '/dev/zvol';
             }
+        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
+            $base_path = "/dev/zvol";
         } else {
             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
         }
