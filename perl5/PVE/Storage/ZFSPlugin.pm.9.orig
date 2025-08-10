@@ -239,8 +239,6 @@ sub options {
 sub on_add_hook {
     my ($class, $storeid, $scfg, %param) = @_;
 
-    _log($storeid, )
-
     if (!$scfg->{'zfs-base-path'}) {
         my $base_path;
         if ($scfg->{iscsiprovider} eq 'comstar') {
