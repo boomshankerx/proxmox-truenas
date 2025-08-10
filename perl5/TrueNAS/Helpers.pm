@@ -1,0 +1,46 @@
+package TrueNAS::Helpers;
+
+use strict;
+use warnings;
+
+use Exporter 'import';
+our @EXPORT_OK = qw(_log);
+
+use Data::Dumper;
+use JSON;
+use Log::Any qw($log);
+use Log::Any::Adapter;
+use PVE::SafeSyslog;
+use Scalar::Util qw(reftype);
+
+# Logging
+our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
+my %LOG_LEVEL = ( debug => 1, info => 2, warning => 3, error => 4 ); 
+my %SYSLOG_LEVEL = ( debug   => 'debug', info    => 'info', warning => 'warning', error   => 'err',);
+
+# Logging Helper
+sub _log {
+    my $message = shift;
+    my $level   = shift || 'info';
+
+    my $min = eval { $ADAPTER->{log_level} };
+    if ($min) {
+        return if ($LOG_LEVEL{$level} // 99) < ($LOG_LEVEL{$min} // 1);
+    }
+
+    if ( defined reftype($message) ) {
+        $message = Dumper($message);
+    }
+
+    my $src      = ( caller(1) )[3];
+    if ( !$src ) {
+        $src = ( caller(0) )[1];
+    }
+    $src     = ( split( /::/, $src ) )[-1];
+
+    $message = "[" . uc($level) . "]: TrueNAS: $src : $message";
+    $log->$level($message);
+    syslog( "$SYSLOG_LEVEL{$level}", $message );
+}
+
+1;
