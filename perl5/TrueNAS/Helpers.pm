@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(_log);
+our @EXPORT_OK = qw(_log _debug);
 
 use Data::Dumper;
 use JSON;
@@ -15,8 +15,9 @@ use Scalar::Util qw(reftype);
 
 # Logging
 our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
-my %LOG_LEVEL = ( debug => 1, info => 2, warning => 3, error => 4 ); 
-my %SYSLOG_LEVEL = ( debug   => 'debug', info    => 'info', warning => 'warning', error   => 'err',);
+my %LOG_LEVEL = ( debug => 1, info => 2, warning => 3, error => 4 );
+my %SYSLOG_LEVEL =
+  ( debug => 'debug', info => 'info', warning => 'warning', error => 'err' );
 
 # Logging Helper
 sub _log {
@@ -25,22 +26,44 @@ sub _log {
 
     my $min = eval { $ADAPTER->{log_level} };
     if ($min) {
-        return if ($LOG_LEVEL{$level} // 99) < ($LOG_LEVEL{$min} // 1);
+        return if ( $LOG_LEVEL{$level} // 99 ) < ( $LOG_LEVEL{$min} // 1 );
     }
 
     if ( defined reftype($message) ) {
         $message = Dumper($message);
     }
 
-    my $src      = ( caller(1) )[3];
-    if ( !$src ) {
-        $src = ( caller(0) )[1];
-    }
-    $src     = ( split( /::/, $src ) )[-1];
+    my $src = ( caller(1) )[3] || ( caller(0) )[3] || 'main';
+    $src = ( split( /::/, $src ) )[-1];
 
     $message = "[" . uc($level) . "]: TrueNAS: $src : $message";
     $log->$level($message);
     syslog( "$SYSLOG_LEVEL{$level}", $message );
+}
+
+sub _debug {
+    my @args = @_;
+
+    # Convert args to strings like _log does
+    my @out = map {
+        if ( defined reftype($_) ) {
+            chomp( my $dump = Dumper($_) );
+            $dump;
+        }
+        else {
+            defined $_ ? $_ : 'undef';
+        }
+    } @args;
+
+    my $src = ( caller(1) )[3] || ( caller(0) )[3] || 'main';
+    $src = ( split /::/, $src )[-1];
+
+    my $message = "########################\n";
+    $message .= "[DEBUG]: TrueNAS: $src : " . join( ", ", @out );
+    $message .= "\n########################\n";
+
+    $log->debug($message);
+    syslog( $SYSLOG_LEVEL{'debug'} // 'debug', $message );
 }
 
 1;
