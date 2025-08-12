@@ -13,13 +13,9 @@ use Carp qw(croak);
 use Data::Dumper;
 use Errno qw(EINTR);
 use JSON;
-use Log::Any qw($log);
-use Log::Any::Adapter;
 use PVE::SafeSyslog;
-use Scalar::Util qw(reftype);
-
-# Logging
-my $debug = 0;
+use Scalar::Util     qw(reftype);
+use TrueNAS::Helpers qw(_log _debug);
 
 sub new {
     my ( $class, $args ) = @_;
@@ -66,7 +62,13 @@ sub new {
 
     # Build URLs for both endpoints
     my $scheme = $self->{secure} ? "wss://" : "ws://";
-    $self->{endpoints} = [ { url => $scheme . $self->{host} . "/api/current", protocol => 'jsonrpc' }, { url => $scheme . $self->{host} . "/websocket", protocol => 'ddp' } ];
+    $self->{endpoints} = [
+        {
+            url      => $scheme . $self->{host} . "/api/current",
+            protocol => 'jsonrpc'
+        },
+        { url => $scheme . $self->{host} . "/websocket", protocol => 'ddp' }
+    ];
 
     # Extract target
 
@@ -416,17 +418,17 @@ sub _message_parse {
         my $rpc = $self->{rpc};
         my $message;
         $message = $rpc->json_to_return($data);
-        if ( !defined $message->{result} ) {
-            $failed = 1;
-            return ( $failed, undef, undef );
-        }
-        elsif ( defined $message->{error} ) {
+        if ( defined $message->{error} ) {
             $error = $message->{error};
             return ( undef, undef, $error );
         }
-        else {
+        elsif ( defined $message->{result} ) {
             $result = $message->{result};
             return ( undef, $result, undef );
+        }
+        else {
+            $failed = 1;
+            return ( $failed, undef, undef );
         }
 
     }
@@ -487,7 +489,7 @@ sub on_error {
     my $message;
 
     if ( $self->{protocol} eq 'jsonrpc' ) {
-        $message = $error->{message};
+        $message = $error->{data}{reason};
     }
     elsif ( $self->{protocol} eq 'ddp' ) {
         $message = $error->{type} . " : " . $error->{reason};
@@ -507,9 +509,12 @@ sub response {
 sub set_target {
     my ( $self, $iqn ) = @_;
 
-    $self->{target} = ( split( /:/, $iqn ) )[-1];
-
-    if ( !$self->{target} ) {
+    if ( $iqn =~ /^(iqn\.\d{4}-\d{2}\.[^:]+):(.+)$/ ) {
+        my $prefix = $1;
+        my $target = $2;
+        $self->{target} = $target;
+    }
+    else {
         croak("Invalid IQN format, expected 'iqn:target'");
     }
     _log( "Target set to: " . $self->{target}, 'debug' );
@@ -619,7 +624,7 @@ sub iscsi_lun_get {
 
 sub iscsi_lun_create {
     my $self     = shift;
-    my $lun_path = shift;
+    my $path     = shift;
     my $MAX_LUNS = shift || 255;
 
     # Get the next id
@@ -631,8 +636,8 @@ sub iscsi_lun_create {
         return;
     }
 
-    ( my $disk = $lun_path ) =~ s{^/dev/}{};
-    ( my $name = $disk )     =~ s{^zvol/}{};
+    ( my $disk = $path ) =~ s{^/dev/}{};
+    ( my $name = $disk ) =~ s{^zvol/}{};
 
     # Create extent
     my $params = { name => $name, type => 'DISK', disk => $disk, };
@@ -651,7 +656,7 @@ sub iscsi_lun_create {
     }
 
     if ( defined $targetextent ) {
-        _log( "$lun_path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
+        _log( "$path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
     }
     else {
         _log( "Failed to create target extent: " . $self->{error}, 'error' );
@@ -706,6 +711,16 @@ sub iscsi_lun_nextid {
     return $lun_id;
 }
 
+sub iscsi_lun_recreate {
+    my $self = shift;
+    my $path = shift;
+
+    ( my $lun_path = $path ) =~ s{/dev/zvol/}{};
+
+    $self->iscsi_lun_delete($lun_path);
+    $self->iscsi_lun_create($path);
+}
+
 sub snapshot_create {
     my $self   = shift;
     my @params = shift;
@@ -750,50 +765,100 @@ sub snapshot_rollback {
     return $result;
 }
 
-sub zvol_list {
+sub zfs_zvol_list {
     my $self   = shift;
     my @params = shift;
 
-    my $query  = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
-    my $result = $self->request( 'pool.dataset.query', $query, { select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ] } );
+    _log("Listing zvols");
+
+    my $query   = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
+    my $options = {
+        extra  => { retrieve_children => \0 },
+        select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ]
+
+    };
+    my $result = $self->request( 'pool.dataset.query', $query, $options );
     if ( $self->has_error ) {
         _log( "Failed to get zvol list: " . $self->{error}, 'error' );
         return;
     }
     my $text = "";
-    for my $item (@$result) {
-        $text .= $item->{name} . " " . ( $item->{volsize}{rawvalue} // '-' ) . " " . ( $item->{origin}{rawvalue} || '-' ) . " " . ( lc( $item->{type} ) ) . " " . ( $item->{refquota}{rawvalue} // '-' ) . "\n";
+    for my $zvol (@$result) {
+        $text .= $zvol->{name} . " " . ( $zvol->{volsize}{rawvalue} || '-' ) . " " . ( $zvol->{origin}{rawvalue} || '-' ) . " " . ( lc( $zvol->{type} ) ) . " " . ( $zvol->{refquota}{rawvalue} // '-' ) . "\n";
     }
 
     return $text;
 }
 
-# Logging Helper
-sub _log {
-    my $message = shift;
-    my $level   = shift || 'info';
+sub zfs_zvol_create {
+    my ( $self, $zvol, $size, $blocksize, $sparce ) = @_;
 
-    if ( $level eq 'debug' && !$debug ) {
+    _log("Creating zvol: $zvol with size: $size");
+
+    my $params = {
+        name         => $zvol,
+        volsize      => $size,
+        volblocksize => uc $blocksize,
+        sparse       => $sparce ? \1 : \0,    # JSON boolean
+        type         => 'VOLUME'
+    };
+    my $result = $self->request( 'pool.dataset.create', $params );
+    if ( $self->has_error ) {
+        _log( "Failed to create zvol: " . $self->{error}, 'error' );
         return;
     }
+    return 1;
+}
 
-    if ( defined reftype($message) ) {
-        $message = Dumper($message);
-    }
+sub zfs_zvol_delete {
+    my ( $self, $zvol ) = @_;
 
-    my $syslog_map = {
-        'debug' => 'debug',
-        'info'  => 'info',
-        'warn'  => 'warning',
-        'error' => 'err',
+    _log("Destroying zvol: $zvol");
+
+    my $options = {
+        force     => \1,    # Force delete
+        recursive => \0,    # Do not delete children datasets
     };
 
-    my $level_uc = uc($level);
-    my $src      = ( caller(1) )[3];
-    $src     = ( split( /::/, $src ) )[-1];
-    $message = "[$level_uc]: TrueNAS: $src : $message";
-    $log->$level($message);
-    syslog( "$syslog_map->{$level}", $message );
+    my $result = $self->request( 'pool.dataset.delete', $zvol, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to destroy zvol: " . $self->{error}, 'error' );
+        return;
+    }
+    return 1;
+}
+
+sub zfs_zvol_resize {
+    my ( $self, $zvol, $size, $attr ) = @_;
+
+    _log("Resizing zvol: $zvol to size: $size");
+
+    my $options = { $attr => $size, };
+
+    my $result = $self->request( 'pool.dataset.update', $zvol, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to update zvol: " . $self->{error}, 'error' );
+        return;
+    }
+    return 1;
+
+}
+
+sub zfs_zpool_get {
+    my ( $self, $pool ) = @_;
+
+    _log("Query zpool: $pool");
+
+    my $query   = [ [ 'name', '=', $pool ] ];
+    my $options = { get => \1 };
+
+    my $result = $self->request( 'pool.query', $query, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to get zpool: " . $self->{error}, 'error' );
+        return;
+    }
+    return $result;
+
 }
 
 1;
