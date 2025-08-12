@@ -53,11 +53,10 @@ echo "[+] Copying TrueNAS Client..."
 rsync perl5/TrueNAS /usr/share/perl5/ -av --delete
 
 echo "[+] Copying TrueNAS Storage Plugins..."
-cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd/
-cp perl5/PVE/Storage/TrueNAS.pm /usr/share/perl5/PVE/Storage/ 
+cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
+cp perl5/PVE/Storage/Custom/TrueNAS.pm /usr/share/perl5/PVE/Storage/Custom
+
+# ./debug.sh
 
 echo "[+] Restarting Proxmox services..."
-systemctl restart pve-cluster
-systemctl restart pvedaemon
-systemctl restart pvestatd
-systemctl restart pveproxy
+systemctl restart pve-cluster pvedaemon pvestatd pveproxy
