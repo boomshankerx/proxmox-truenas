@@ -9,7 +9,7 @@ use PVE::RPCEnvironment;
 
 # use lib '/root/proxmox-truenas/perl5';
 use TrueNAS::Client;
-use TrueNAS::Helpers qw(_log);
+use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
 my $base                      = '/dev/zvol';
@@ -42,23 +42,23 @@ sub plugindata {
 
 sub properties {
     return {
-        p_truenas_user => {
+        truenas_user => {
             description => "TrueNAS API Username",
             type        => 'string',
         },
-        p_truenas_password => {
+        truenas_password => {
             description => "TrueNAS API Password",
             type        => 'string',
         },
-        p_truenas_use_ssl => {
+        truenas_use_ssl => {
             description => "TrueNAS API access via SSL",
             type        => 'boolean',
         },
-        p_truenas_apiv4_host => {
+        truenas_apiv4_host => {
             description => "TrueNAS API Host",
             type        => 'string',
         },
-        p_truenas_apikey => {
+        truenas_apikey => {
             description => "TrueNAS API Key",
             type        => 'string',
         },
@@ -96,15 +96,13 @@ sub truenas_client_init {
       ? $scfg->{truenas_apiv4_host}
       : $scfg->{portal};
 
-    _log("Called");
-
     if ( !defined $truenas_server_list->{$apihost} ) {
         $result = truenas_client_connect($scfg);
         _log( "Version: " . $result );
     }
     else {
         $truenas_client->set_target( $scfg->{target} );
-        _log("Using existing client");
+        _log("Using existing client", 'debug');
     }
 
     $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
@@ -118,8 +116,6 @@ sub truenas_client_init {
 # Connect to the TrueNAS API service
 sub truenas_client_connect {
     my ($scfg) = @_;
-
-    _log("Called");
 
     my $apihost =
       defined( $scfg->{truenas_apiv4_host} )
@@ -157,7 +153,7 @@ sub on_add_hook {
 sub path {
     my ( $class, $scfg, $volname, $storeid, $snapname ) = @_;
 
-    _log("Called");
+    _log( "Called", 'debug' );
 
     die "direct access to snapshots not implemented"
       if defined($snapname);
@@ -205,6 +201,8 @@ sub qemu_blockdev_options {
 sub alloc_image {
     my ( $class, $storeid, $scfg, $vmid, $fmt, $name, $size ) = @_;
 
+    _log( "Called", 'debug' );
+
     die "unsupported format '$fmt'" if $fmt ne 'raw';
 
     die "illegal name '$name' - should be 'vm-$vmid-*'\n"
@@ -214,7 +212,7 @@ sub alloc_image {
 
     $volname = $class->find_free_diskname( $storeid, $scfg, $vmid, $fmt )
       if !$volname;
-    $size    = zfs_align_size($size);
+    $size = zfs_align_size($size);
 
     # Create zvol
     truenas_client_init($scfg);
@@ -222,6 +220,8 @@ sub alloc_image {
     if ($result) {
         $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$volname");
     }
+
+    _log("Created zvol '$volname' in pool '$scfg->{pool}' with size $size bytes");
 
     return $volname;
 }
@@ -239,6 +239,8 @@ sub free_image {
         last if $result;
         sleep(1);
     }
+
+    _log("Deleted zvol '$name' from pool '$scfg->{pool}'");
 
     return undef;
 }
@@ -270,6 +272,105 @@ sub volume_has_feature {
     return undef;
 }
 
+sub volume_snapshot {
+    my ( $class, $scfg, $storeid, $volname, $snap ) = @_;
+
+    my ( undef, $vname, undef, undef, undef, undef, $format ) = $class->parse_volname($volname);
+    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_snapshot_create($snapshot_name);
+
+    _log("Created snapshot $snapshot_name'");
+
+}
+
+sub volume_snapshot_delete {
+    my ( $class, $scfg, $storeid, $volname, $snap, $running ) = @_;
+
+    truenas_client_init($scfg);
+    my $object = "$scfg->{pool}/$volname\@$snap";
+    my $result = $truenas_client->zfs_snapshot_delete($object);
+    if ($result) {
+        _log("Deleted snapshot '$snap' for volume '$volname'");
+    }
+
+}
+
+sub volume_snapshot_info {
+
+    my ( $class, $scfg, $storeid, $volname ) = @_;
+
+    my $vname = ( $class->parse_volname($volname) )[1];
+    my $zvol  = "$scfg->{pool}/$vname";
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_snapshot_list($zvol);
+
+    my $info = {};
+    for my $snap ( @{$result} ) {
+        my $name     = $snap->{name};
+        my $guid     = $snap->{properties}{guid}{value};
+        my $creation = $snap->{properties}{creation}{rawvalue};
+        $info->{$name} = {
+            id        => $guid,
+            timestamp => $creation,
+        };
+
+    }
+
+    return $info;
+}
+
+sub volume_snapshot_rollback {
+
+    my ( $class, $scfg, $storeid, $volname, $snap ) = @_;
+
+    my ( undef, $vname, undef, undef, undef, undef, $format ) = $class->parse_volname($volname);
+    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_snapshot_rollback($snapshot_name);
+
+    _log("Rolled back $volname to snapshot $snapshot_name");
+
+}
+
+sub volume_rollback_is_possible {
+    my ( $class, $scfg, $storeid, $volname, $snap, $blockers ) = @_;
+
+    # can't use '-S creation', because zfs list won't reverse the order when the
+    # creation time is the same second, breaking at least our tests.
+    # my $snapshots = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-s', 'creation']);
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_snapshot_list("$scfg->{pool}/$volname");
+
+    my $found;
+    $blockers //= [];    # not guaranteed to be set by caller
+    for my $snapshot (@$result) {
+        if ( $snapshot->{snapshot_name} eq $snap ) {
+            $found = 1;
+        }
+        elsif ($found) {
+            push $blockers->@*, $snapshot;
+        }
+    }
+
+    my $volid = "${storeid}:${volname}";
+
+    die "can't rollback, snapshot '$snap' does not exist on '$volid'\n"
+      if !$found;
+
+    die "can't rollback, '$snap' is not most recent snapshot on '$volid'\n"
+      if scalar( $blockers->@* ) > 0;
+
+    _log("Rollback to snapshot '$snap' is possible for '$volid'");
+
+    return 1;
+
+}
+
 sub volume_resize {
     my ( $class, $scfg, $storeid, $volname, $size, $running ) = @_;
 
@@ -284,29 +385,33 @@ sub volume_resize {
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_zvol_resize( "$scfg->{pool}/$vname", $new_size, $attr );
 
+    _log( "Resized $volname to $new_size bytes", 'info' );
+
     return $new_size;
 }
 
 sub status {
-    my ($class, $storeid, $scfg, $cache) = @_;
+    my ( $class, $storeid, $scfg, $cache ) = @_;
 
-    my $pool = (split("/", $scfg->{pool}))[0];
+    my $pool = ( split( "/", $scfg->{pool} ) )[0];
 
-    my $active = 0;
+    my $active    = 0;
     my $allocated = 0;
-    my $free = 0;
-    my $total = 0;
+    my $free      = 0;
+    my $total     = 0;
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zpool_get( $pool );
+    my $result = $truenas_client->zfs_zpool_get($pool);
     if ($result) {
-        $active = 1;
+        $active    = 1;
         $allocated = $result->{allocated};
-        $free = $result->{free};
-        $total = $result->{size};
+        $free      = $result->{free};
+        $total     = $result->{size};
     }
 
-    return ($total, $free, $allocated, $active);
+    _log( "Stus: total=$total, free=$free, allocated=$allocated, active=$active", 'debug' );
+
+    return ( $total, $free, $allocated, $active );
 
 }
 
@@ -387,36 +492,6 @@ sub zfs_align_size {
     my $padding = ( 1024 - $size % 1024 ) % 1024;
     $size = ( $size + $padding ) * 1024;    # convert to Bytes
     return $size;
-
-}
-
-sub zfs_create_zvol {
-    my ( $class, $scfg, $zvol, $size ) = @_;
-
-    _log("Called");
-
-    $size = zfs_align_size($size);
-
-    my $name = "$scfg->{pool}/$zvol";
-
-    truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_create( $name, $size, $scfg->{blocksize}, $scfg->{sparse} );
-
-}
-
-sub zfs_delete_zvol {
-    my ( $class, $scfg, $zvol ) = @_;
-
-    for ( my $i = 0 ; $i < 6 ; $i++ ) {
-        truenas_client_init($scfg);
-        my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$zvol");
-        last if $result;
-        sleep(1);
-    }
-
-}
-
-sub zfs_create_lu {
 
 }
 
