@@ -18,17 +18,17 @@ use Scalar::Util     qw(reftype);
 use TrueNAS::Helpers qw(_log _debug);
 
 sub new {
-    my ( $class, $args ) = @_;
+    my ( $class, $scfg ) = @_;
 
-    _log( $args, 'debug' );
+    _log( $scfg, 'debug' );
 
     my $self = {
-        host     => $args->{truenas_apiv4_host} || croak("Host is required"),
-        username => $args->{truenas_user},
-        password => $args->{truenas_password},
-        secure   => $args->{truenas_use_ssl} || 0,
-        apikey   => $args->{truenas_apikey},
-        iqn      => $args->{target},
+        host     => $scfg->{truenas_apiv4_host} || croak("Host is required"),
+        username => $scfg->{truenas_user},
+        password => $scfg->{truenas_password},
+        secure   => $scfg->{truenas_use_ssl} || 0,
+        apikey   => $scfg->{truenas_apikey},
+        iqn      => $scfg->{target},
         target   => undef,
         targets  => {},
 
@@ -79,10 +79,9 @@ sub new {
 sub request {
     my ( $self, $method, @params ) = @_;
 
-    _log($method);
+    _log($method, 'debug');
 
     unless ( $self->_is_connected() && $self->{auth} ) {
-        _log( "Connecting...", 'info' );
         $self->_connect();
         $self->_authenticate();
     }
@@ -102,8 +101,6 @@ sub _authenticate {
     my ($self) = @_;
     my $message;
     my $result;
-
-    _log( "Authenticating", 'debug' );
 
     if ( $self->{protocol} eq 'ddp' ) {
 
@@ -140,8 +137,6 @@ sub _call {
     my $timeout = shift // $self->{timeout};
     my $result;
     my $response;
-
-    _log( $message, 'debug' );
 
     $self->_send($message);
 
@@ -190,7 +185,7 @@ sub _connect {
         };
         if ($@) {
             $last_error = $@;
-            _log( "Socket connection failed for  $last_error", 'error' );
+            _log( "Socket connection failed for  $last_error", 'warn' );
             next;    # Try the next endpoint
         }
 
@@ -219,7 +214,7 @@ sub _connect {
 
         $self->{connected} = 1;
         $self->{sock}      = $sock;
-        _log("Success");
+        _log("Connected");
         return;
     }
     croak "Failed to connect to any endpoint: $last_error";
@@ -231,20 +226,22 @@ sub _disconnect {
     my ($self) = @_;
     return unless $self->{sock};
 
-    _log("Disconnecting");
-
-    eval {
-        my $frame = Protocol::WebSocket::Frame->new(
-            type   => 'close',
-            buffer => '',
-        );
-        syswrite( $self->{sock}, $frame->to_bytes );
-    };
+    # eval {
+    #     my $frame = Protocol::WebSocket::Frame->new(
+    #         type   => 'close',
+    #         buffer => '',
+    #     );
+    #     syswrite( $self->{sock}, $frame->to_bytes );
+    # };
 
     close( $self->{sock} );
     $self->{sock}      = undef;
     $self->{connected} = 0;
     $self->{auth}      = 0;
+
+    _log("Disconnected");
+
+    return;
 }
 
 # Handle incoming JSON-RPC responses
@@ -495,7 +492,8 @@ sub on_error {
         $message = $error->{type} . " : " . $error->{reason};
     }
     $self->{error} = $message;
-    _log( $error, 'error' );
+    _log( $message, 'error' );
+    _log( $error, 'debug' );
 
 }
 
@@ -721,7 +719,7 @@ sub iscsi_lun_recreate {
     $self->iscsi_lun_create($path);
 }
 
-sub snapshot_create {
+sub zfs_snapshot_create {
     my $self   = shift;
     my @params = shift;
 
@@ -729,7 +727,7 @@ sub snapshot_create {
     my ( $dataset, $name ) = split( '@', $object );
 
     my $params = { dataset => $dataset, name => $name, };
-    my $result = $self->request( 'zfs.snapshot.create', $params );
+    my $result = $self->request( 'pool.snapshot.create', $params );
     if ( $self->has_error ) {
         _log( "Failed to create snapshot: " . $self->{error}, 'error' );
         return;
@@ -737,27 +735,43 @@ sub snapshot_create {
     return $result;
 }
 
-sub snapshot_delete {
+sub zfs_snapshot_list {
     my $self   = shift;
     my @params = shift;
 
     my $object = $params[0];
 
-    my $result = $self->request( 'zfs.snapshot.delete', $object );
+    my $query = [ [ 'dataset', '=', $object ] ];
+
+    my $options = { select => [ 'name', 'dataset', 'snapshot_name', 'properties', 'createtxg' ], order_by => ['createtxg'] };
+
+    # my $options = {};
+
+    my $result = $self->request( 'pool.snapshot.query', $query, $options );
     if ( $self->has_error ) {
-        _log( "Failed to delete snapshot: " . $self->{error}, 'error' );
+        _log( "Failed to list snapshots: " . $self->{error}, 'error' );
         return;
     }
     return $result;
 }
 
-sub snapshot_rollback {
+sub zfs_snapshot_delete {
     my $self   = shift;
     my @params = shift;
 
     my $object = $params[0];
 
-    my $result = $self->request( 'zfs.snapshot.rollback', $object );
+    my $result = $self->request( 'pool.snapshot.delete', $object );
+    return $result;
+}
+
+sub zfs_snapshot_rollback {
+    my $self   = shift;
+    my @params = shift;
+
+    my $object = $params[0];
+
+    my $result = $self->request( 'pool.snapshot.rollback', $object );
     if ( $self->has_error ) {
         _log( "Failed to rollback snapshot: " . $self->{error}, 'error' );
         return;
