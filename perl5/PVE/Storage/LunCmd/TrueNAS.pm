@@ -10,9 +10,7 @@ use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 use TrueNAS::Client;
 
-# Logging
-Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
-my $debug = 0;
+use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
 my $MAX_LUNS                  = 255;       # Max LUNS per target  the iSCSI server
@@ -259,34 +257,6 @@ sub _build_query {
         push( @$result, $query );
     }
     return $result;
-}
-
-# Logging Helper
-sub _log {
-    my $message = shift;
-    my $level   = shift || 'info';
-
-    if ( $level eq 'debug' && !$debug ) {
-        return;
-    }
-
-    if ( defined reftype($message) ) {
-        $message = Dumper($message);
-    }
-
-    my $syslog_map = {
-        'debug' => 'debug',
-        'info'  => 'info',
-        'warn'  => 'warning',
-        'error' => 'err',
-    };
-
-    my $level_uc = uc($level);
-    my $src      = ( caller(1) )[3];
-    $src     = ( split( /::/, $src ) )[-1];
-    $message = "[$level_uc]: TrueNAS: $src : $message";
-    $log->$level($message);
-    syslog( "$syslog_map->{$level}", $message );
 }
 
 1;

@@ -14,29 +14,33 @@ use PVE::SafeSyslog;
 use Scalar::Util qw(reftype);
 
 # Logging
-our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'debug' );
-my %LOG_LEVEL = ( debug => 1, info => 2, warning => 3, error => 4 );
-my %SYSLOG_LEVEL =
-  ( debug => 'debug', info => 'info', warning => 'warning', error => 'err' );
+our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
+my %LOG_LEVEL    = ( debug => 1,       info => 2,      warning => 3,         error => 4 );
+my %SYSLOG_LEVEL = ( debug => 'debug', info => 'info', warning => 'warning', error => 'err' );
 
 # Logging Helper
 sub _log {
     my $message = shift;
     my $level   = shift || 'info';
 
-    my $min = eval { $ADAPTER->{log_level} };
+    my $min = eval { $ADAPTER->{adapter_params}[1] };
     if ($min) {
         return if ( $LOG_LEVEL{$level} // 99 ) < ( $LOG_LEVEL{$min} // 1 );
     }
 
-    if ( defined reftype($message) ) {
-        $message = Dumper($message);
+    # If debugging add calling context
+    if ( $LOG_LEVEL{$min} == 1 ) {
+        if ( defined reftype($message) ) {
+            $message = Dumper($message);
+        }
+        my $src = ( caller(1) )[3] || ( caller(0) )[3] || 'main';
+        $src     = ( split( /::/, $src ) )[-1];
+        $message = "TrueNAS [" . uc($level) . "] $src : $message";
+    }
+    else {
+        $message = "TrueNAS [" . uc($level) . "] : $message";
     }
 
-    my $src = ( caller(1) )[3] || ( caller(0) )[3] || 'main';
-    $src = ( split( /::/, $src ) )[-1];
-
-    $message = "[" . uc($level) . "]: TrueNAS: $src : $message";
     $log->$level($message);
     syslog( "$SYSLOG_LEVEL{$level}", $message );
 }
@@ -64,6 +68,13 @@ sub _debug {
 
     $log->debug($message);
     syslog( $SYSLOG_LEVEL{'debug'} // 'debug', $message );
+}
+
+sub justify {
+    my $text = shift;
+    my $width = shift || 10;
+    my $justified = sprintf( "%${width}s", $text );
+    return $justified;
 }
 
 1;
