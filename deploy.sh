@@ -19,6 +19,9 @@ while [[ $# -gt 0 ]]; do
       reinstall=true
       shift # past argument
       ;;
+    -p|--patch)
+      patch=true
+      ;;
   esac
 done
 
@@ -38,25 +41,30 @@ else
     mv ${PATH_Manager}.orig ${PATH_Manager}
 fi
 
-# Patching ZFSPlugin.pm
-echo "[+] Patching ZFSPlugin.pm..."
-patch ${PATCH_ARGS} /usr/share/perl5/PVE/Storage/ZFSPlugin.pm < perl5/PVE/Storage/ZFSPlugin.pm.${ver}.patch
 
-# Patching pvemanagerlib.js
-echo "[+] Patching pvemanagerlib.js..."
-patch ${PATCH_ARGS} /usr/share/pve-manager/js/pvemanagerlib.js < pve-manager/js/pvemanagerlib.js.${ver}.patch
+if [ $patch ]; then
+    echo "Patching Proxmox files..."
+  # Patching ZFSPlugin.pm
+  echo "[+] Patching ZFSPlugin.pm..."
+  patch ${PATCH_ARGS} /usr/share/perl5/PVE/Storage/ZFSPlugin.pm < perl5/PVE/Storage/ZFSPlugin.pm.${ver}.patch
 
-# echo "[+] Patching API docs..."
-# patch ${PATCH_ARGS} -d /usr/share/pve-docs/api-viewer < pve-docs/api-viewer/apidoc.js.${ver}.patch
+  # Patching pvemanagerlib.js
+  echo "[+] Patching pvemanagerlib.js..."
+  patch ${PATCH_ARGS} /usr/share/pve-manager/js/pvemanagerlib.js < pve-manager/js/pvemanagerlib.js.${ver}.patch
+
+  # echo "[+] Patching API docs..."
+  # patch ${PATCH_ARGS} -d /usr/share/pve-docs/api-viewer < pve-docs/api-viewer/apidoc.js.${ver}.patch
+
+else
+    echo "Skipping patching Proxmox files..."
+fi
 
 echo "[+] Copying TrueNAS Client..."
 rsync perl5/TrueNAS /usr/share/perl5/ -av --delete
 
 echo "[+] Copying TrueNAS Storage Plugins..."
-cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
+# cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
 cp perl5/PVE/Storage/Custom/TrueNAS.pm /usr/share/perl5/PVE/Storage/Custom
 
-# ./debug.sh
-
 echo "[+] Restarting Proxmox services..."
-systemctl restart pve-cluster pvedaemon pvestatd pveproxy
+systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy
