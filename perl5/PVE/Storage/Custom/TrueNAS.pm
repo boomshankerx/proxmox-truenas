@@ -102,7 +102,7 @@ sub truenas_client_init {
     }
     else {
         $truenas_client->set_target( $scfg->{target} );
-        _log("Using existing client", 'debug');
+        _log( "Using existing client", 'debug' );
     }
 
     $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
@@ -139,6 +139,98 @@ sub truenas_client_connect {
 # Storage implementation
 ########################
 
+sub alloc_image {
+    my ( $class, $storeid, $scfg, $vmid, $fmt, $name, $size ) = @_;
+
+    die "unsupported format '$fmt'" if $fmt ne 'raw';
+
+    die "illegal name '$name' - should be 'vm-$vmid-*'\n"
+      if $name && $name !~ m/^vm-$vmid-/;
+
+    my $volname = $name;
+
+    $volname = $class->find_free_diskname( $storeid, $scfg, $vmid, $fmt )
+      if !$volname;
+    $size = zfs_align_size($size);
+
+    # Create zvol
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_zvol_create( "$scfg->{pool}/$volname", $size, $scfg->{blocksize}, $scfg->{sparse} );
+    if ($result) {
+        $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$volname");
+    }
+
+    return $volname;
+}
+
+sub create_base {
+    my ( $class, $storeid, $scfg, $volname ) = @_;
+
+    _log("Called", 'debug');
+
+    my $snap = '__base__';
+
+    my ( $vtype, $name, $vmid, $basename, $basevmid, $isBase ) = $class->parse_volname($volname);
+
+    die "create_base not possible with base image\n" if $isBase;
+
+    my $newname = $name;
+    $newname =~ s/^vm-/base-/;
+
+    my $newvolname = $basename ? "$basename/$newname" : "$newname";
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
+
+    $result = $truenas_client->zfs_zvol_rename( "$scfg->{pool}/$name", "$scfg->{pool}/$newname" );
+
+    $result = $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$newname");
+
+    $class->volume_snapshot( $scfg, $storeid, $newname, $snap );
+
+    return $newvolname;
+}
+
+sub clone_image {
+    my ( $class, $scfg, $storeid, $volname, $vmid, $snap ) = @_;
+
+    $snap ||= '__base__';
+
+    my ( $vtype, $basename, $basevmid, undef, undef, $isBase, $format ) = $class->parse_volname($volname);
+
+    die "clone_image only works on base images\n" if !$isBase;
+
+    # get ZFS dataset name from PVE volname
+    my $name = $class->find_free_diskname( $storeid, $scfg, $vmid, $format );
+    my ( undef, $clonedname ) = $class->parse_volname($name);
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_zvol_clone( "$scfg->{pool}/$basename", "$scfg->{pool}/$name", $snap );
+
+    if ($result) {
+        $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$clonedname");
+    }
+
+    return $name;
+}
+
+sub free_image {
+    my ( $class, $storeid, $scfg, $volname, $isBase ) = @_;
+
+    my ( $vtype, $name, $vmid ) = $class->parse_volname($volname);
+
+    for ( my $i = 0 ; $i < 6 ; $i++ ) {
+        truenas_client_init($scfg);
+        my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
+        last if $result;
+        sleep($i * 3);
+    }
+
+    _log("Deleted $scfg->{pool}/$name");
+
+    return undef;
+}
+
 # called during addition of storage (before the new storage config got written)
 # die to abort addition if there are (grave) problems
 # NOTE: runs in a storage config *locked* context
@@ -152,8 +244,6 @@ sub on_add_hook {
 
 sub path {
     my ( $class, $scfg, $volname, $storeid, $snapname ) = @_;
-
-    _log( "Called", 'debug' );
 
     die "direct access to snapshots not implemented"
       if defined($snapname);
@@ -171,9 +261,31 @@ sub path {
 
     my $path = "iscsi://$portal/$target/$lun";
 
+    _log($path);
     _log( "$path, vmid: $vmid, vtype: $vtype", 'debug' );
 
     return ( $path, $vmid, $vtype );
+}
+
+sub rename_volume {
+    my ( $class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname ) = @_;
+
+    _log("Called", 'debug');
+
+    my ( undef, $source_image, $source_vmid, $base_name, $base_vmid, undef, $format, ) = $class->parse_volname($source_volname);
+    $target_volname = $class->find_free_diskname( $storeid, $scfg, $target_vmid, $format )
+      if !$target_volname;
+
+    my $pool           = $scfg->{pool};
+    my $source_zfspath = "${pool}/${source_image}";
+    my $target_zfspath = "${pool}/${target_volname}";
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_zvol_rename( $source_zfspath, $target_zfspath );
+
+    $base_name = $base_name ? "${base_name}/" : '';
+
+    return "${storeid}:${base_name}${target_volname}";
 }
 
 sub qemu_blockdev_options {
@@ -196,53 +308,6 @@ sub qemu_blockdev_options {
         target    => "$scfg->{target}",
         lun       => int($lun),
     };
-}
-
-sub alloc_image {
-    my ( $class, $storeid, $scfg, $vmid, $fmt, $name, $size ) = @_;
-
-    _log( "Called", 'debug' );
-
-    die "unsupported format '$fmt'" if $fmt ne 'raw';
-
-    die "illegal name '$name' - should be 'vm-$vmid-*'\n"
-      if $name && $name !~ m/^vm-$vmid-/;
-
-    my $volname = $name;
-
-    $volname = $class->find_free_diskname( $storeid, $scfg, $vmid, $fmt )
-      if !$volname;
-    $size = zfs_align_size($size);
-
-    # Create zvol
-    truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_create( "$scfg->{pool}/$volname", $size, $scfg->{blocksize}, $scfg->{sparse} );
-    if ($result) {
-        $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$volname");
-    }
-
-    _log("Created zvol '$volname' in pool '$scfg->{pool}' with size $size bytes");
-
-    return $volname;
-}
-
-sub free_image {
-    my ( $class, $storeid, $scfg, $volname, $isBase ) = @_;
-
-    _log("Called");
-
-    my ( $vtype, $name, $vmid ) = $class->parse_volname($volname);
-
-    for ( my $i = 0 ; $i < 6 ; $i++ ) {
-        truenas_client_init($scfg);
-        my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
-        last if $result;
-        sleep(1);
-    }
-
-    _log("Deleted zvol '$name' from pool '$scfg->{pool}'");
-
-    return undef;
 }
 
 sub volume_has_feature {
@@ -276,12 +341,12 @@ sub volume_snapshot {
     my ( $class, $scfg, $storeid, $volname, $snap ) = @_;
 
     my ( undef, $vname, undef, undef, undef, undef, $format ) = $class->parse_volname($volname);
-    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
+    my $snapshot = "$scfg->{pool}/$vname\@$snap";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_snapshot_create($snapshot_name);
+    my $result = $truenas_client->zfs_snapshot_create($snapshot);
 
-    _log("Created snapshot $snapshot_name'");
+    _log("Created snapshot: $snapshot'");
 
 }
 
@@ -292,7 +357,7 @@ sub volume_snapshot_delete {
     my $object = "$scfg->{pool}/$volname\@$snap";
     my $result = $truenas_client->zfs_snapshot_delete($object);
     if ($result) {
-        _log("Deleted snapshot '$snap' for volume '$volname'");
+        _log("Deleted snapshot: $object");
     }
 
 }
@@ -327,21 +392,17 @@ sub volume_snapshot_rollback {
     my ( $class, $scfg, $storeid, $volname, $snap ) = @_;
 
     my ( undef, $vname, undef, undef, undef, undef, $format ) = $class->parse_volname($volname);
-    my $snapshot_name = "$scfg->{pool}/$vname\@$snap";
+    my $snapshot = "$scfg->{pool}/$vname\@$snap";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_snapshot_rollback($snapshot_name);
+    my $result = $truenas_client->zfs_snapshot_rollback($snapshot);
 
-    _log("Rolled back $volname to snapshot $snapshot_name");
+    _log("Rollback snaphot: $snapshot");
 
 }
 
 sub volume_rollback_is_possible {
     my ( $class, $scfg, $storeid, $volname, $snap, $blockers ) = @_;
-
-    # can't use '-S creation', because zfs list won't reverse the order when the
-    # creation time is the same second, breaking at least our tests.
-    # my $snapshots = $class->zfs_get_sorted_snapshot_list($scfg, $volname, ['-s', 'creation']);
 
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_snapshot_list("$scfg->{pool}/$volname");
@@ -371,10 +432,26 @@ sub volume_rollback_is_possible {
 
 }
 
+sub volume_size_info {
+    my ( $class, $scfg, $storeid, $volname, $timeout ) = @_;
+
+    my ( undef, $vname, undef, $parent, undef, undef, $format ) = $class->parse_volname($volname);
+
+    truenas_client_init($scfg);
+    my $result = $truenas_client->zfs_zvol_get("$scfg->{pool}/$vname");
+
+    my $size = $result->{volsize}{rawvalue} || 0;
+    my $used = $result->{usedbydataset}{rawvalue} || 0;
+
+    if ( $size =~ /^(\d+)$/ ) {
+        return wantarray ? ( $1, $format, $used, $parent ) : $1;
+    }
+
+    die "Could not get zfs volume size\n";
+}
+
 sub volume_resize {
     my ( $class, $scfg, $storeid, $volname, $size, $running ) = @_;
-
-    _log("Called");
 
     my ( undef, $vname, undef, undef, undef, undef, $format ) = $class->parse_volname($volname);
 
@@ -493,20 +570,6 @@ sub zfs_align_size {
     $size = ( $size + $padding ) * 1024;    # convert to Bytes
     return $size;
 
-}
-
-sub zfs_add_lun_mapping_entry {
-    my ( $class, $scfg, $volname, $guid ) = @_;
-
-    truenas_client_init($scfg);
-    my $result = $truenas_client->iscsi_lun_add( $volname, $guid );
-
-    if ( $truenas_client->{has_error} ) {
-        truenas_api_log_error();
-        die "Failed to add LUN mapping entry for '$volname': " . $truenas_client->{error_message} . "\n";
-    }
-
-    return $result;
 }
 
 1;
