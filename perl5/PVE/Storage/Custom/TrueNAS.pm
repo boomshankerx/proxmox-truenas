@@ -261,7 +261,6 @@ sub path {
 
     my $path = "iscsi://$portal/$target/$lun";
 
-    _log($path);
     _log( "$path, vmid: $vmid, vtype: $vtype", 'debug' );
 
     return ( $path, $vmid, $vtype );
