@@ -784,7 +784,7 @@ sub zfs_snapshot_rollback {
         return;
     }
 
-    _log("Rolled back to snapshot: $snapshot");
+    _log("Rollback to snapshot: $snapshot");
 
     return $result;
 }

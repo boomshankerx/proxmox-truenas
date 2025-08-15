@@ -389,8 +389,6 @@ sub volume_snapshot_rollback {
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_snapshot_rollback($snapshot);
 
-    _log("Rollback snaphot: $snapshot");
-
 }
 
 sub volume_rollback_is_possible {
