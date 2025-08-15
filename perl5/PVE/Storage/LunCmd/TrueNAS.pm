@@ -76,10 +76,8 @@ sub _create_lu {
     _log($lun_path);
 
     my $result = $truenas_client->iscsi_lun_create($lun_path);
-    if ($result) {
-        _log( $lun_path . " Success" );
-    }
-    else {
+    
+    if (!$result) {
         die "Unable to create lun $lun_path";
     }
 
@@ -93,14 +91,9 @@ sub _delete_lu {
     my ( $scfg, $timeout, @params ) = @_;
     my $lun_path = $params[0];
 
-    _log("$lun_path");
-
     $lun_path =~ s/^\Q$dev_prefix//;
     my $result = $truenas_client->iscsi_lun_delete($lun_path);
-    if ($result) {
-        _log( $lun_path . " Deleted" );
-    }
-    else {
+    if (!$result) {
         _log("Unable to delete lun $lun_path");
     }
 
@@ -126,8 +119,6 @@ sub _list_lu {
     my ( $scfg, $timeout, $search_field, @params ) = @_;
     my $object = $params[0];    # search value
     my $result = undef;
-
-    _log("$search_field, $object");
 
     $object =~ s/^\Q$dev_prefix//;
 
@@ -159,8 +150,6 @@ sub _list_lu {
 sub _list_view {
     my ( $scfg, $timeout, @params ) = @_;
 
-    _log("Called");
-
     return _list_lu( $scfg, $timeout, "lunid", @params );
 }
 
@@ -172,8 +161,6 @@ sub _modify_lu {
     my ( $scfg, $timeout, @params ) = @_;
     shift(@params);
 
-    _log("Called");
-
     _delete_lu( $scfg, $timeout, @params );
     return _create_lu( $scfg, $timeout, @params );
 }
@@ -182,8 +169,6 @@ sub _modify_lu {
 # Connect to the TrueNAS API service
 sub truenas_client_connect {
     my ($scfg) = @_;
-
-    _log("Called");
 
     my $apihost =
       defined( $scfg->{truenas_apiv4_host} )
@@ -213,8 +198,6 @@ sub truenas_client_init {
       defined( $scfg->{truenas_apiv4_host} )
       ? $scfg->{truenas_apiv4_host}
       : $scfg->{portal};
-
-    _log("Called");
 
     if ( !defined $truenas_server_list->{$apihost} ) {
         $result = truenas_client_connect($scfg);
