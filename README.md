@@ -61,6 +61,34 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-## Custom Plugin with full API support for TrueNAS 25.10  ** **ALPHA** **
+# ** **ALPHA** ** Custom Plugin with full API support for TrueNAS 25.10  
 
-Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing. 
+Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
+
+**BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
+
+## Installation
+```
+apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
+```
+```
+./deploy.sh
+```
+
+## Example config
+```
+truenas: nas
+    blocksize 16k
+    iscsiprovider truenas
+    pool tank/proxmox
+    portal 10.0.0.1
+    target iqn.2005-10.org.freenas.ctl:proxmox
+    content images
+    nowritecache 0
+    sparse 1
+    truenas_apikey <APIKEY>
+    truenas_apiv4_host 10.0.0.1
+    truenas_use_ssl 1
+    truenas_user <USER>
+    truenas_password <PASSWORD>
+```
