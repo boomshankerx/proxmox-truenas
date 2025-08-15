@@ -1,4 +1,4 @@
-# TrueNAS ZFS over iSCSI interface for Proxmox VE
+# TrueNAS over iSCSI Custom Storage Plugin for Proxmox
 
 ## Acknowledgement
 
