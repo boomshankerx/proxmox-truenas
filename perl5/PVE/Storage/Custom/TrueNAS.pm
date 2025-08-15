@@ -226,8 +226,6 @@ sub free_image {
         sleep($i * 3);
     }
 
-    _log("Deleted $scfg->{pool}/$name");
-
     return undef;
 }
 
@@ -345,8 +343,6 @@ sub volume_snapshot {
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_snapshot_create($snapshot);
 
-    _log("Created snapshot: $snapshot'");
-
 }
 
 sub volume_snapshot_delete {
@@ -355,9 +351,6 @@ sub volume_snapshot_delete {
     truenas_client_init($scfg);
     my $object = "$scfg->{pool}/$volname\@$snap";
     my $result = $truenas_client->zfs_snapshot_delete($object);
-    if ($result) {
-        _log("Deleted snapshot: $object");
-    }
 
 }
 

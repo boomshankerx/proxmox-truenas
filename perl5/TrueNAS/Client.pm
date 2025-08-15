@@ -279,8 +279,8 @@ sub _is_connected {
     return 0 unless $self->{sock} && $self->{connected};
 
     if ( time - $self->{lastcall} >= 60 ) {
-        _log("Connection timed out", 'warn');
         $self->_disconnect;
+        _log( "Connection timed out. Reconnecting...", 'warn' );
         return 0;
     }
 
@@ -555,17 +555,6 @@ sub iscsi_global_config {
     return $result;
 }
 
-sub iscsi_target_query {
-    my $self   = shift;
-    my @params = @_;
-
-    my $result = $self->request( 'iscsi.target.query', @params );
-    if ( $self->has_error ) {
-        return;
-    }
-    return $result;
-}
-
 sub iscsi_target_getid {
     my $self        = shift;
     my $target_name = shift;
@@ -577,29 +566,27 @@ sub iscsi_target_getid {
 
     # If not cached, query the target
     my $query  = _build_query( { name => $target_name } );
-    my $result = $self->request( 'iscsi.target.query', $query, {} );
-    if ( $self->{error} ) {
+    my $options = { get => \1 };
+    my $result = $self->request( 'iscsi.target.query', $query, $options );
+    if (!$result){
         _log( "Failed to get target ID", 'error' );
         return;
     }
-    if ($result) {
-        $result = $result->[0];
-        $self->{targets}{$target_name} = $result->{id};
-        _log( "Target ID for $target_name: " . $result->{id}, 'debug' );
-        return $result->{id};
-    }
-    else {
-        return undef;
-    }
+    $self->{targets}{$target_name} = $result->{id};
+
+    _log( "Target ID for $target_name: " . $result->{id}, 'debug' );
+
+    return $result->{id};
 
 }
 
 sub iscsi_targetextent_query {
     my $self   = shift;
     my $params = shift;
+    my $options = shift || {};
 
     my $query  = _build_query($params);
-    my $result = $self->request( 'iscsi.targetextent.query', $query, {} );
+    my $result = $self->request( 'iscsi.targetextent.query', $query, $options );
     if ( $self->{error} ) {
         _log( "Failed to get target extent", 'error' );
         return;
@@ -613,24 +600,24 @@ sub iscsi_lun_get {
     my $path        = shift;
     my $target_name = shift || $self->{target};
     my $query;
+    my $options;
 
     my $target_id = $self->iscsi_target_getid($target_name);
 
     $query = _build_query( { path => $path } );
-    my $extent = $self->request( 'iscsi.extent.query', $query, {} );
-    if (!@$extent) {
+    $options = { get => \1 };
+    my $extent = $self->request( 'iscsi.extent.query', $query, $options );
+    if ( !$extent ) {
         _log( "Extent not found for path: $path", 'warn' );
-        return undef;
+        return;
     }
-    $extent = $extent->[0];
 
     $query = _build_query( { target => $target_id, extent => $extent->{id} } );
-    my $targetextent = $self->request( 'iscsi.targetextent.query', $query, {} );
-    if (@$targetextent) {
-        $targetextent = $targetextent->[0];
-    }
-    else {
-        return undef;
+    $options = { get => \1 };
+    my $targetextent = $self->request( 'iscsi.targetextent.query', $query, $options );
+    if (!$targetextent ) {
+        _log( "Target extent not found for target: $target_name", 'warn' );
+        return;
     }
 
     $extent->{lunid}  = $targetextent->{lunid};
@@ -644,6 +631,8 @@ sub iscsi_lun_create {
     my $self     = shift;
     my $path     = shift;
     my $MAX_LUNS = shift || 255;
+
+    _log( $path, 'debug' );
 
     # Get the next id
     my $lun_id    = $self->iscsi_lun_nextid();
@@ -673,10 +662,6 @@ sub iscsi_lun_create {
         return;
     }
 
-    if ( !defined $targetextent ) {
-        _log( "Failed to create target extent", 'error' );
-    }
-
     _log( "Created LUN: $path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
     return 1;
 
@@ -701,6 +686,7 @@ sub iscsi_lun_delete {
     }
 
     _log("Deleted LUN: $path");
+
     return 1;
 
 }
@@ -751,6 +737,9 @@ sub zfs_snapshot_create {
         _log( "Failed to create snapshot", 'error' );
         return;
     }
+
+    _log("Created snapshot: $snapshot");
+
     return $result;
 }
 
@@ -761,8 +750,6 @@ sub zfs_snapshot_list {
     my $query = [ [ 'dataset', '=', $dataset ] ];
 
     my $options = { select => [ 'name', 'dataset', 'snapshot_name', 'properties', 'createtxg' ], order_by => ['createtxg'] };
-
-    # my $options = {};
 
     my $result = $self->request( 'pool.snapshot.query', $query, $options );
     if ( $self->has_error ) {
@@ -782,6 +769,8 @@ sub zfs_snapshot_delete {
         return;
     }
 
+    _log("Deleted snapshot: $snapshot");
+
     return $result;
 }
 
@@ -794,6 +783,9 @@ sub zfs_snapshot_rollback {
         _log( "Failed to rollback snapshot", 'error' );
         return;
     }
+
+    _log("Rolled back to snapshot: $snapshot");
+
     return $result;
 }
 
@@ -850,13 +842,13 @@ sub zfs_zvol_create {
         return;
     }
 
-    _log( "Created zvol: $zvol : " . bytes2gb($size) . " : blocksize $blocksize" );
+    _log( "Created zvol: $zvol : " . bytes2gb($size) . "GiB : blocksize $blocksize" );
 
     return 1;
 }
 
 sub zfs_zvol_clone {
-    my ( $self, $zvol, $dataset_dst, $snap  ) = @_;
+    my ( $self, $zvol, $dataset_dst, $snap ) = @_;
 
     my $snapshot = $zvol . "\@$snap";
 
@@ -903,10 +895,9 @@ sub zfs_zvol_resize {
         return;
     }
 
-    _log( "Resized zvol: $zvol to " . bytes2gb($size) . " : $attr" );
+    _log( "Resized zvol: $zvol to " . bytes2gb($size) . "GiB : $attr" );
 
     return 1;
-
 }
 
 sub zfs_zvol_rename {
@@ -923,7 +914,6 @@ sub zfs_zvol_rename {
     _log("Renamed zvol: $src_zvol to $dst_zvol");
 
     return 1;
-
 }
 
 sub zfs_zpool_get {
@@ -939,8 +929,8 @@ sub zfs_zpool_get {
         _log( "Failed to get zpool", 'error' );
         return;
     }
+    
     return $result;
-
 }
 
 1;

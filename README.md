@@ -6,11 +6,9 @@ This plugin is based on <https://github.com/TheGrandWazoo/freenas-proxmox>. It h
 
 ## Compatibility
 
-** NOTE ** **Proxmox 9.0 is not yet supported.**
-
-Proxmox VE 8.4.9  
-pve-manager 8.4.9  
-libpve-storage-perl 8.3.7
+Proxmox VE 8.4.11 / 9.0.5
+pve-manager 8.4.11 / 9.0.5 
+libpve-storage-perl 8.3.7 / 9.0.13
 
 ## Migrating from freenas-proxmox
 
@@ -24,6 +22,13 @@ libpve-storage-perl 8.3.7
 1. Download the latest release of the .deb file to your Proxmox host
 2. Install the .deb package using `sudo apt install <deb>`
 3. Create ZFS over iSCSI connection
+
+### Dependencies
+If you want to install dependencies manually
+
+```
+apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
+```
 
 ## Example config
 
