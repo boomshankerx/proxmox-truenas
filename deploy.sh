@@ -17,10 +17,11 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     -r|--reinstall)
       reinstall=true
-      shift # past argument
+      shift 
       ;;
     -p|--patch)
       patch=true
+      shift
       ;;
   esac
 done
