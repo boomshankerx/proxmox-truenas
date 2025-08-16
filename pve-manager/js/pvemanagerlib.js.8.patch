@@ -1,5 +1,5 @@
---- pvemanagerlib.js.848	2025-08-05 13:39:47.394294178 -0600
-+++ pvemanagerlib.js	2025-08-05 14:28:21.905099183 -0600
+--- pvemanagerlib.js.8.orig	2025-08-15 21:07:19.280235084 -0600
++++ pvemanagerlib.js.8	2025-08-15 21:30:45.313665099 -0600
 @@ -9729,6 +9729,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
@@ -8,7 +8,7 @@
          ['istgt', 'istgt'],
          ['iet', 'IET'],
          ['LIO', 'LIO'],
-@@ -62647,10 +62648,31 @@
+@@ -62650,10 +62651,31 @@
              },
          },
          changeISCSIProvider: function (f, newVal, oldVal) {
@@ -40,7 +40,7 @@
          },
      },
  
-@@ -62668,6 +62690,7 @@
+@@ -62671,6 +62693,7 @@
      },
  
      setValues: function (values) {
@@ -48,7 +48,7 @@
          values.writecache = values.nowritecache ? 0 : 1;
          this.callParent([values]);
      },
-@@ -62684,7 +62707,7 @@
+@@ -62687,7 +62710,7 @@
                  allowBlank: false,
              },
              {
@@ -57,7 +57,7 @@
                  name: 'pool',
                  value: '',
                  fieldLabel: gettext('Pool'),
-@@ -62694,11 +62717,11 @@
+@@ -62697,11 +62720,11 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'blocksize',
                  value: '4k',
@@ -71,7 +71,7 @@
                  name: 'target',
                  value: '',
                  fieldLabel: gettext('Target'),
-@@ -62709,9 +62732,108 @@
+@@ -62712,9 +62735,108 @@
                  name: 'comstar_tg',
                  value: '',
                  fieldLabel: gettext('Target group'),
@@ -182,28 +182,3 @@
          ];
  
          me.column2 = [
-@@ -62743,7 +62865,9 @@
-                 xtype: me.isCreate ? 'textfield' : 'displayfield',
-                 name: 'comstar_hg',
-                 value: '',
--                bind: me.isCreate ? { disabled: '{!isComstar}' } : { hidden: '{!isComstar}' },
-+                bind: {
-+                    hidden: '{!isComstar}'
-+                },
-                 fieldLabel: gettext('Host group'),
-                 allowBlank: true,
-             },
-@@ -62751,9 +62875,11 @@
-                 xtype: me.isCreate ? 'textfield' : 'displayfield',
-                 name: 'lio_tpg',
-                 value: '',
--                bind: me.isCreate ? { disabled: '{!isLIO}' } : { hidden: '{!isLIO}' },
--                allowBlank: false,
-+                bind: {
-+                    hidden: '{!isLIO}'
-+                },
-                 fieldLabel: gettext('Target portal group'),
-+                allowBlank: true
-             },
-         ];
- 

@@ -1,5 +1,5 @@
---- ZFSPlugin.pm.837	2025-08-05 13:39:47.386293882 -0600
-+++ ZFSPlugin.pm	2025-08-05 13:49:32.058011861 -0600
+--- ZFSPlugin.pm.8.orig	2025-08-15 21:10:45.401623108 -0600
++++ ZFSPlugin.pm.8	2025-08-15 21:17:39.796492888 -0600
 @@ -11,6 +11,7 @@
  
  use base qw(PVE::Storage::ZFSPoolPlugin);
@@ -119,3 +119,12 @@
          lio_tpg => { optional => 1 },
          content => { optional => 1 },
          bwlimit => { optional => 1 },
+@@ -267,6 +300,8 @@
+ 		log_warn($message);
+ 		$base_path = '/dev/zvol';
+ 	    }
++        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
++            $base_path = "/dev/zvol";
+         } else {
+             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+         }
