@@ -510,7 +510,7 @@ sub on_error {
         $message = $error->{data}{reason};
     }
     elsif ( $self->{protocol} eq 'ddp' ) {
-        $message = $error->{type} . " : " . $error->{reason};
+        $message = $error->{errname} . " : " . $error->{reason};
     }
     $self->{error} = $message;
     _log( $message, 'error' );
@@ -530,7 +530,8 @@ sub set_target {
 
     if ( $iqn =~ /^(iqn\.\d{4}-\d{2}\.[^:]+):(.+)$/ ) {
         my $prefix = $1;
-        my $target = $2;
+        my $suffix = $2;
+        my $target = (split /:/, $suffix)[-1];
         $self->{target} = $target;
     }
     else {
