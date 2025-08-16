@@ -2,7 +2,13 @@
 
 ## Acknowledgement
 
-This plugin is based on <https://github.com/TheGrandWazoo/freenas-proxmox>. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
+This plugin was made possible by the great work at <https://github.com/TheGrandWazoo/freenas-proxmox>. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
+
+## Donations
+
+[![Donate](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
+
+Thank you for supporting open-source. Made with love for the community. 
 
 ## Compatibility
 
