@@ -1,2 +1,4 @@
 /.vscode
-perl5/debug.pm
+debug.pm
+debug.sh
+pull.sh

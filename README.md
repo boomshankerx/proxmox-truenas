@@ -1,4 +1,4 @@
-# TrueNAS ZFS over iSCSI interface for Proxmox VE
+# TrueNAS over iSCSI Custom Storage Plugin for Proxmox
 
 ## Acknowledgement
 
@@ -6,11 +6,9 @@ This plugin is based on <https://github.com/TheGrandWazoo/freenas-proxmox>. It h
 
 ## Compatibility
 
-** NOTE ** **Proxmox 9.0 is not yet supported.**
-
-Proxmox VE 8.4.9  
-pve-manager 8.4.9  
-libpve-storage-perl 8.3.7
+Proxmox VE 8.4.11 / 9.0.5  
+pve-manager 8.4.11 / 9.0.5  
+libpve-storage-perl 8.3.7 / 9.0.13  
 
 ## Migrating from freenas-proxmox
 
@@ -24,6 +22,13 @@ libpve-storage-perl 8.3.7
 1. Download the latest release of the .deb file to your Proxmox host
 2. Install the .deb package using `sudo apt install <deb>`
 3. Create ZFS over iSCSI connection
+
+### Dependencies
+If you want to install dependencies manually
+
+```
+apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
+```
 
 ## Example config
 
@@ -55,3 +60,35 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 2. Refresh the Proxmox GUI in your browser to load the new Javascript code.
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
+
+# ** **ALPHA** ** Custom Plugin with full API support for TrueNAS 25.10  
+
+Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
+
+**BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
+
+## Installation
+```
+apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
+```
+```
+./deploy.sh
+```
+
+## Example config
+```
+truenas: nas
+    blocksize 16k
+    iscsiprovider truenas
+    pool tank/proxmox
+    portal 10.0.0.1
+    target iqn.2005-10.org.freenas.ctl:proxmox
+    content images
+    nowritecache 0
+    sparse 1
+    truenas_apikey <APIKEY>
+    truenas_apiv4_host 10.0.0.1
+    truenas_use_ssl 1
+    truenas_user <USER>
+    truenas_password <PASSWORD>
+```

@@ -15,7 +15,7 @@ use Errno qw(EINTR);
 use JSON;
 use PVE::SafeSyslog;
 use Scalar::Util     qw(reftype);
-use TrueNAS::Helpers qw(_log _debug);
+use TrueNAS::Helpers qw(_log _debug justify bytes2gb);
 
 sub new {
     my ( $class, $scfg ) = @_;
@@ -79,7 +79,7 @@ sub new {
 sub request {
     my ( $self, $method, @params ) = @_;
 
-    _log($method, 'debug');
+    _log( $method, 'debug' );
 
     unless ( $self->_is_connected() && $self->{auth} ) {
         $self->_connect();
@@ -102,6 +102,8 @@ sub _authenticate {
     my $message;
     my $result;
 
+    _log( "Called", 'debug' );
+
     if ( $self->{protocol} eq 'ddp' ) {
 
         # Send Connect
@@ -118,16 +120,14 @@ sub _authenticate {
         $result  = $self->_call($message);
     }
 
-    if ($result) {
-        $self->{auth} = 1;
-        _log("Authenticated");
-    }
-    else {
-        $self->{auth} = 0;
-        _log( "Authentication failed", 'error' );
+    if ( !$result ) {
+        _log( "Authentication failed: No response", 'error' );
         croak "Authentication failed";
         return;
     }
+
+    $self->{auth} = 1;
+    _log("Authenticated");
 }
 
 # Reads WebSocket response with timeout and returns decoded result
@@ -138,6 +138,8 @@ sub _call {
     my $result;
     my $response;
 
+    _log( $message, 'debug' );
+
     $self->_send($message);
 
     eval { $response = $self->_receive($timeout); };
@@ -147,7 +149,7 @@ sub _call {
         return;
     }
     if ( !defined $response ) {
-        _log( "No response received", 'error' );
+        _log( "No response received", 'warn' );
         $self->_disconnect;
         return;
     }
@@ -159,6 +161,8 @@ sub _call {
 
 sub _connect {
     my ($self) = @_;
+
+    _log( "Called", 'debug' );
 
     my $sock;
     my $last_error;
@@ -190,7 +194,9 @@ sub _connect {
         }
 
         # Handshake
+
         _log( $url, 'debug' );
+
         my $handshake;
         my $response = '';
         eval {
@@ -260,7 +266,9 @@ sub _handle_response {
         return;
     }
     $self->{result} = $result;
+
     _log( "Result: " . Dumper($result), 'debug' );
+
     return $result;
 }
 
@@ -271,8 +279,8 @@ sub _is_connected {
     return 0 unless $self->{sock} && $self->{connected};
 
     if ( time - $self->{lastcall} >= 60 ) {
-        _log("Connection timed out");
         $self->_disconnect;
+        _log( "Connection timed out. Reconnecting...", 'warn' );
         return 0;
     }
 
@@ -300,6 +308,9 @@ sub _is_connected {
 
 # Send data over the WebSocket
 sub _send {
+
+    _log( "Called", 'debug' );
+
     my ( $self, $message ) = @_;
     my $frame  = Protocol::WebSocket::Frame->new($message);
     my $result = syswrite( $self->{sock}, $frame->to_bytes );
@@ -313,6 +324,8 @@ sub _receive {
     my $start   = time;
     my $buffer;
 
+    _log( "Called", 'debug' );
+
     while ( ( time - $start ) < $timeout ) {
         my $read;
         my $buffer;
@@ -324,7 +337,7 @@ sub _receive {
                 croak "Read failed: $!";
             }
             elsif ( $read == 0 ) {
-                _log( "Connection closed", 'warn' );
+                _log( "Remote closed connection", 'warn' );
                 $self->_disconnect;
                 return;
             }
@@ -372,6 +385,8 @@ sub _message_gen {
     my $method = shift;
     my @params = @_;
 
+    _log( "Called", 'debug' );
+
     my $message;
     my $id = $self->{msg_id}++;
 
@@ -407,6 +422,8 @@ sub _message_gen {
 sub _message_parse {
     my ( $self, $data ) = @_;
 
+    _log( "Called", 'debug' );
+
     my $failed = 0;
     my $result = undef;
     my $error  = undef;
@@ -414,6 +431,10 @@ sub _message_parse {
     if ( $self->{protocol} eq 'jsonrpc' ) {
         my $rpc = $self->{rpc};
         my $message;
+
+        # fix "result": null in return data in rename methods
+        $data =~ s/"result":\s*null/"result": true/g;
+
         $message = $rpc->json_to_return($data);
         if ( defined $message->{error} ) {
             $error = $message->{error};
@@ -493,7 +514,7 @@ sub on_error {
     }
     $self->{error} = $message;
     _log( $message, 'error' );
-    _log( $error, 'debug' );
+    _log( $error,   'debug' );
 
 }
 
@@ -534,17 +555,6 @@ sub iscsi_global_config {
     return $result;
 }
 
-sub iscsi_target_query {
-    my $self   = shift;
-    my @params = @_;
-
-    my $result = $self->request( 'iscsi.target.query', @params );
-    if ( $self->has_error ) {
-        return;
-    }
-    return $result;
-}
-
 sub iscsi_target_getid {
     my $self        = shift;
     my $target_name = shift;
@@ -556,31 +566,29 @@ sub iscsi_target_getid {
 
     # If not cached, query the target
     my $query  = _build_query( { name => $target_name } );
-    my $result = $self->request( 'iscsi.target.query', $query, {} );
-    if ( $self->{error} ) {
-        _log( "Failed to get target ID: " . $self->{error}, 'error' );
+    my $options = { get => \1 };
+    my $result = $self->request( 'iscsi.target.query', $query, $options );
+    if (!$result){
+        _log( "Failed to get target ID", 'error' );
         return;
     }
-    if ($result) {
-        $result = $result->[0];
-        $self->{targets}{$target_name} = $result->{id};
-        _log( "Target ID for $target_name: " . $result->{id}, 'debug' );
-        return $result->{id};
-    }
-    else {
-        return undef;
-    }
+    $self->{targets}{$target_name} = $result->{id};
+
+    _log( "Target ID for $target_name: " . $result->{id}, 'debug' );
+
+    return $result->{id};
 
 }
 
 sub iscsi_targetextent_query {
     my $self   = shift;
     my $params = shift;
+    my $options = shift || {};
 
     my $query  = _build_query($params);
-    my $result = $self->request( 'iscsi.targetextent.query', $query, {} );
+    my $result = $self->request( 'iscsi.targetextent.query', $query, $options );
     if ( $self->{error} ) {
-        _log( "Failed to get target extent: " . $self->{error}, 'error' );
+        _log( "Failed to get target extent", 'error' );
         return;
     }
     return $result;
@@ -592,25 +600,24 @@ sub iscsi_lun_get {
     my $path        = shift;
     my $target_name = shift || $self->{target};
     my $query;
+    my $options;
 
     my $target_id = $self->iscsi_target_getid($target_name);
 
     $query = _build_query( { path => $path } );
-    my $extent = $self->request( 'iscsi.extent.query', $query, {} );
-    if (@$extent) {
-        $extent = $extent->[0];
-    }
-    else {
-        return undef;
+    $options = { get => \1 };
+    my $extent = $self->request( 'iscsi.extent.query', $query, $options );
+    if ( !$extent ) {
+        _log( "Extent not found for path: $path", 'warn' );
+        return;
     }
 
     $query = _build_query( { target => $target_id, extent => $extent->{id} } );
-    my $targetextent = $self->request( 'iscsi.targetextent.query', $query, {} );
-    if (@$targetextent) {
-        $targetextent = $targetextent->[0];
-    }
-    else {
-        return undef;
+    $options = { get => \1 };
+    my $targetextent = $self->request( 'iscsi.targetextent.query', $query, $options );
+    if (!$targetextent ) {
+        _log( "Target extent not found for target: $target_name", 'warn' );
+        return;
     }
 
     $extent->{lunid}  = $targetextent->{lunid};
@@ -624,6 +631,8 @@ sub iscsi_lun_create {
     my $self     = shift;
     my $path     = shift;
     my $MAX_LUNS = shift || 255;
+
+    _log( $path, 'debug' );
 
     # Get the next id
     my $lun_id    = $self->iscsi_lun_nextid();
@@ -641,7 +650,7 @@ sub iscsi_lun_create {
     my $params = { name => $name, type => 'DISK', disk => $disk, };
     my $extent = $self->request( 'iscsi.extent.create', $params );
     if ( $self->has_error ) {
-        _log( "Failed to create LUN: " . $self->{error}, 'error' );
+        _log( "Failed to create LUN", 'error' );
         return;
     }
 
@@ -649,18 +658,11 @@ sub iscsi_lun_create {
     $params = { target => $target_id, extent => $extent->{id}, lunid => $lun_id };
     my $targetextent = $self->request( 'iscsi.targetextent.create', $params );
     if ( $self->has_error ) {
-        _log( "Failed to create target extent: " . $self->{error}, 'error' );
+        _log( "Failed to create target extent", 'error' );
         return;
     }
 
-    if ( defined $targetextent ) {
-        _log( "$path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
-    }
-    else {
-        _log( "Failed to create target extent: " . $self->{error}, 'error' );
-        return;
-    }
-
+    _log( "Created LUN: $path : T" . $target_id . ":E" . $extent->{'id'} . ":L" . $lun_id );
     return 1;
 
 }
@@ -668,19 +670,24 @@ sub iscsi_lun_create {
 sub iscsi_lun_delete {
     my ( $self, $path ) = @_;
 
+    _log( $path, 'debug' );
+
+    $path =~ s{/dev/}{};
+
     my $lun = $self->iscsi_lun_get( $path, $self->{target} );
     if ( !$lun ) {
         _log( "LUN not found: $path", 'error' );
         return;
     }
     my $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
-    if ($result) {
-        _log("LUN deleted: $path");
-        return 1;
+    if ( $self->has_error ) {
+        _log( "Failed to delete LUN", 'error' );
+        return;
     }
-    else {
-        _log( "Failed to delete LUN: $path", 'error' );
-    }
+
+    _log("Deleted LUN: $path");
+
+    return 1;
 
 }
 
@@ -704,8 +711,6 @@ sub iscsi_lun_nextid {
         $lun_id++;
     }
 
-    _log($lun_id);
-
     return $lun_id;
 }
 
@@ -713,67 +718,86 @@ sub iscsi_lun_recreate {
     my $self = shift;
     my $path = shift;
 
-    ( my $lun_path = $path ) =~ s{/dev/zvol/}{};
+    ( my $lun_path = $path ) =~ s{/dev/}{};
 
     $self->iscsi_lun_delete($lun_path);
     $self->iscsi_lun_create($path);
+
 }
 
 sub zfs_snapshot_create {
-    my $self   = shift;
-    my @params = shift;
+    my $self     = shift;
+    my $snapshot = shift;
 
-    my $object = $params[0];
-    my ( $dataset, $name ) = split( '@', $object );
+    my ( $dataset, $name ) = split( '@', $snapshot );
 
     my $params = { dataset => $dataset, name => $name, };
     my $result = $self->request( 'pool.snapshot.create', $params );
     if ( $self->has_error ) {
-        _log( "Failed to create snapshot: " . $self->{error}, 'error' );
+        _log( "Failed to create snapshot", 'error' );
         return;
     }
+
+    _log("Created snapshot: $snapshot");
+
     return $result;
 }
 
 sub zfs_snapshot_list {
-    my $self   = shift;
-    my @params = shift;
+    my $self    = shift;
+    my $dataset = shift;
 
-    my $object = $params[0];
-
-    my $query = [ [ 'dataset', '=', $object ] ];
+    my $query = [ [ 'dataset', '=', $dataset ] ];
 
     my $options = { select => [ 'name', 'dataset', 'snapshot_name', 'properties', 'createtxg' ], order_by => ['createtxg'] };
 
-    # my $options = {};
-
     my $result = $self->request( 'pool.snapshot.query', $query, $options );
     if ( $self->has_error ) {
-        _log( "Failed to list snapshots: " . $self->{error}, 'error' );
+        _log( "Failed to list snapshots", 'error' );
         return;
     }
     return $result;
 }
 
 sub zfs_snapshot_delete {
-    my $self   = shift;
-    my @params = shift;
+    my $self     = shift;
+    my $snapshot = shift;
 
-    my $object = $params[0];
+    my $result = $self->request( 'pool.snapshot.delete', $snapshot );
+    if ( $self->has_error ) {
+        _log( "Failed to delete snapshot", 'error' );
+        return;
+    }
 
-    my $result = $self->request( 'pool.snapshot.delete', $object );
+    _log("Deleted snapshot: $snapshot");
+
     return $result;
 }
 
 sub zfs_snapshot_rollback {
-    my $self   = shift;
-    my @params = shift;
+    my $self     = shift;
+    my $snapshot = shift;
 
-    my $object = $params[0];
-
-    my $result = $self->request( 'pool.snapshot.rollback', $object );
+    my $result = $self->request( 'pool.snapshot.rollback', $snapshot );
     if ( $self->has_error ) {
-        _log( "Failed to rollback snapshot: " . $self->{error}, 'error' );
+        _log( "Failed to rollback snapshot", 'error' );
+        return;
+    }
+
+    _log("Rollback to snapshot: $snapshot");
+
+    return $result;
+}
+
+sub zfs_zvol_get {
+    my ( $self, $zvol ) = @_;
+
+    _log( " $zvol", 'debug' );
+
+    my $options = {};
+    my $result  = $self->request( 'pool.dataset.get_instance', $zvol, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to get zvol", 'error' );
         return;
     }
     return $result;
@@ -783,8 +807,6 @@ sub zfs_zvol_list {
     my $self   = shift;
     my @params = shift;
 
-    _log("Listing zvols");
-
     my $query   = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
     my $options = {
         extra  => { retrieve_children => \0 },
@@ -793,7 +815,7 @@ sub zfs_zvol_list {
     };
     my $result = $self->request( 'pool.dataset.query', $query, $options );
     if ( $self->has_error ) {
-        _log( "Failed to get zvol list: " . $self->{error}, 'error' );
+        _log( "Failed to get zvol list", 'error' );
         return;
     }
     my $text = "";
@@ -807,8 +829,6 @@ sub zfs_zvol_list {
 sub zfs_zvol_create {
     my ( $self, $zvol, $size, $blocksize, $sparce ) = @_;
 
-    _log("Creating zvol: $zvol with size: $size");
-
     my $params = {
         name         => $zvol,
         volsize      => $size,
@@ -818,44 +838,82 @@ sub zfs_zvol_create {
     };
     my $result = $self->request( 'pool.dataset.create', $params );
     if ( $self->has_error ) {
-        _log( "Failed to create zvol: " . $self->{error}, 'error' );
+        _log( "Failed to create zvol", 'error' );
         return;
     }
+
+    _log( "Created zvol: $zvol : " . bytes2gb($size) . "GiB : blocksize $blocksize" );
+
+    return 1;
+}
+
+sub zfs_zvol_clone {
+    my ( $self, $zvol, $dataset_dst, $snap ) = @_;
+
+    my $snapshot = $zvol . "\@$snap";
+
+    # Clone the snapshot to a new zvol
+    my $params = { snapshot => $snapshot, dataset_dst => $dataset_dst, };
+    my $result = $self->request( 'pool.snapshot.clone', $params );
+    if ( $self->has_error ) {
+        _log( "Failed to clone zvol", 'error' );
+        return;
+    }
+
+    _log("Cloned zvol: $zvol >> $dataset_dst");
+
     return 1;
 }
 
 sub zfs_zvol_delete {
     my ( $self, $zvol ) = @_;
 
-    _log("Destroying zvol: $zvol");
-
     my $options = {
         force     => \1,    # Force delete
-        recursive => \0,    # Do not delete children datasets
+        recursive => \1,    # Delete children
     };
 
     my $result = $self->request( 'pool.dataset.delete', $zvol, $options );
     if ( $self->has_error ) {
-        _log( "Failed to destroy zvol: " . $self->{error}, 'error' );
+        _log( "Failed to destroy zvol", 'error' );
         return;
     }
+
+    _log("Deleted zvol: $zvol");
+
     return 1;
 }
 
 sub zfs_zvol_resize {
     my ( $self, $zvol, $size, $attr ) = @_;
 
-    _log("Resizing zvol: $zvol to size: $size");
-
     my $options = { $attr => $size, };
 
     my $result = $self->request( 'pool.dataset.update', $zvol, $options );
     if ( $self->has_error ) {
-        _log( "Failed to update zvol: " . $self->{error}, 'error' );
+        _log( "Failed to update zvol", 'error' );
         return;
     }
-    return 1;
 
+    _log( "Resized zvol: $zvol to " . bytes2gb($size) . "GiB : $attr" );
+
+    return 1;
+}
+
+sub zfs_zvol_rename {
+    my ( $self, $src_zvol, $dst_zvol ) = @_;
+
+    my $options = { new_name => $dst_zvol, force => \1 };
+
+    my $result = $self->request( 'pool.dataset.rename', $src_zvol, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to rename zvol", 'error' );
+        return;
+    }
+
+    _log("Renamed zvol: $src_zvol to $dst_zvol");
+
+    return 1;
 }
 
 sub zfs_zpool_get {
@@ -868,11 +926,11 @@ sub zfs_zpool_get {
 
     my $result = $self->request( 'pool.query', $query, $options );
     if ( $self->has_error ) {
-        _log( "Failed to get zpool: " . $self->{error}, 'error' );
+        _log( "Failed to get zpool", 'error' );
         return;
     }
+    
     return $result;
-
 }
 
 1;

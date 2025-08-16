@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 use Exporter 'import';
-our @EXPORT_OK = qw(_log _debug);
+our @EXPORT_OK = qw(_log _debug justify bytes2gb);
 
 use Data::Dumper;
 use JSON;
@@ -16,7 +16,7 @@ use Scalar::Util qw(reftype);
 # Logging
 our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
 my %LOG_LEVEL    = ( debug => 1,       info => 2,      warning => 3,         error => 4 );
-my %SYSLOG_LEVEL = ( debug => 'debug', info => 'info', warning => 'warning', error => 'err' );
+my %SYSLOG_LEVEL = ( debug => 'debug', info => 'info', warn    => 'warning', error => 'err' );
 
 # Logging Helper
 sub _log {
@@ -71,10 +71,15 @@ sub _debug {
 }
 
 sub justify {
-    my $text = shift;
-    my $width = shift || 10;
+    my $text      = shift;
+    my $width     = shift || 10;
     my $justified = sprintf( "%${width}s", $text );
     return $justified;
+}
+
+sub bytes2gb {
+    my $bytes = shift || 0;
+    return sprintf( "%.2f", $bytes / ( 1024 * 1024 * 1024 ) );
 }
 
 1;
