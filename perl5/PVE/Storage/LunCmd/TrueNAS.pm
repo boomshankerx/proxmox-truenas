@@ -38,8 +38,6 @@ sub get_base {
 sub run_lun_command {
     my ( $scfg, $timeout, $method, @params ) = @_;
 
-    _log(" $timeout : $method : @params");
-
     truenas_client_init($scfg);
 
     return _add_view( $scfg, $timeout, @params )          if ( $method eq "add_lu" );
@@ -106,8 +104,6 @@ sub _delete_lu {
 #
 sub _list_extent {
     my ( $scfg, $timeout, @params ) = @_;
-
-    _log("Called");
 
     return _list_lu( $scfg, $timeout, "naa", @params );
 }
