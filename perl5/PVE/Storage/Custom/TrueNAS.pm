@@ -97,13 +97,14 @@ sub truenas_client_init {
       : $scfg->{portal};
 
     if ( !defined $truenas_server_list->{$apihost} ) {
-        _log("Client initilizing", 'debug');
+        _log("Client New: ($apihost)", 'debug');
         $result = truenas_client_connect($scfg);
         _log( "Version: " . $result );
     }
     else {
+        $truenas_client = $truenas_server_list->{$apihost};
         $truenas_client->set_target( $scfg->{target} );
-        _log("Client initialized", 'debug');
+        _log("Client: ($apihost)", 'debug');
     }
 
     $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =

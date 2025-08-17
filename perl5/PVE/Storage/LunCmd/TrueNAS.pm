@@ -201,6 +201,7 @@ sub truenas_client_init {
         _log( "Version: " . $result );
     }
     else {
+        $truenas_client = $truenas_server_list->{$apihost};
         $truenas_client->set_target( $scfg->{target} );
         _log("Client initialized", 'debug');
     }
