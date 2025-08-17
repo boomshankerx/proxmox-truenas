@@ -44,7 +44,7 @@ sub run_lun_command {
     return _create_lu( $scfg, $timeout, @params )         if ( $method =~ /^(create|import)_lu$/ );
     return _delete_lu( $scfg, $timeout, @params )         if ( $method eq "delete_lu" );
     return _list_extent( $scfg, $timeout, @params )       if ( $method eq "list_extent" );
-    return _list_lu( $scfg, $timeout, 'name', @params )   if ( $method eq "list_lu" );
+    return _list_lu( $scfg, $timeout, 'path', @params )   if ( $method eq "list_lu" );
     return _list_view( $scfg, $timeout, @params )         if ( $method eq "list_view" );
     return _modify_lu( $scfg, $timeout, @params )         if ( $method eq "modify_lu" );
     return _snapshot_create( $scfg, $timeout, @params )   if ( $method eq "snapshot" );
@@ -121,7 +121,7 @@ sub _list_lu {
     my $lun = $truenas_client->iscsi_lun_get($object);
     if ( defined($lun) ) {
         if ( defined($search_field) ) {
-            if ( $search_field eq "name" ) {
+            if ( $search_field eq "path" ) {
                 $result = $dev_prefix . $lun->{path};
             }
             elsif ( $search_field eq "lunid" ) {
@@ -196,12 +196,13 @@ sub truenas_client_init {
       : $scfg->{portal};
 
     if ( !defined $truenas_server_list->{$apihost} ) {
+        _log("Client initilizing", 'debug');
         $result = truenas_client_connect($scfg);
         _log( "Version: " . $result );
     }
     else {
         $truenas_client->set_target( $scfg->{target} );
-        _log("Websocket Client already initialized");
+        _log("Client initialized", 'debug');
     }
 
     $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
