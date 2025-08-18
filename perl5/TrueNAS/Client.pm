@@ -2,6 +2,7 @@ package TrueNAS::Client;
 use strict;
 use warnings;
 
+use IO::Select;
 use IO::Socket::IP;
 use IO::Socket::SSL;
 use JSON::RPC::Common::Marshal::Text;
@@ -11,7 +12,7 @@ use Protocol::WebSocket::Handshake::Client;
 
 use Carp qw(croak);
 use Data::Dumper;
-use Errno qw(EINTR);
+use Errno qw(EINTR EAGAIN EWOULDBLOCK);
 use JSON;
 use PVE::SafeSyslog;
 use Scalar::Util     qw(reftype);
@@ -232,14 +233,6 @@ sub _disconnect {
     my ($self) = @_;
     return unless $self->{sock};
 
-    # eval {
-    #     my $frame = Protocol::WebSocket::Frame->new(
-    #         type   => 'close',
-    #         buffer => '',
-    #     );
-    #     syswrite( $self->{sock}, $frame->to_bytes );
-    # };
-
     close( $self->{sock} );
     $self->{sock}      = undef;
     $self->{connected} = 0;
@@ -321,35 +314,43 @@ sub _send {
 sub _receive {
     my $self    = shift;
     my $timeout = shift;
-    my $start   = time;
-    my $buffer;
 
     _log( "Called", 'debug' );
 
-    while ( ( time - $start ) < $timeout ) {
-        my $read;
-        my $buffer;
+    my $sock = $self->{sock}          or croak "Socket not initialized";
+    my $sel  = IO::Select->new($sock) or croak "IO::Select init failed";
 
-        do {
-            $read = sysread( $self->{sock}, $buffer, 65536 );
-            if ( !defined($read) ) {
-                next if $! == EINTR;
-                croak "Read failed: $!";
-            }
-            elsif ( $read == 0 ) {
-                _log( "Remote closed connection", 'warn' );
-                $self->_disconnect;
-                return;
-            }
-        } while ( !defined($read) );
+    my $start = time;
+    my $bytes = 0;
+
+    while (1) {
+        my $remaining = $timeout - ( time - $start );
+        last if $remaining <= 0;
+
+        my @ready = $sel->can_read($remaining);
+        unless (@ready) {
+            last;
+        }
+
+        my $buffer;
+        my $read = sysread( $self->{sock}, $buffer, 65536 );
+        if ( !defined($read) ) {
+            next if $! == EINTR || $! == EAGAIN || $! == EWOULDBLOCK;
+            $self->_disconnect;
+            croak "Read failed: $!";
+        }
+
+        if ( $read == 0 ) {
+            _log( "Remote closed connection", 'warn' );
+            $self->_disconnect;
+            return;
+        }
 
         $self->{frame}->append($buffer);
-        while ( my $response = $self->{frame}->next ) {
+        if ( my $response = $self->{frame}->next ) {
             $self->{lastcall} = time;
             return $response;
         }
-
-        select( undef, undef, undef, 0.01 );    # avoid tight loop
     }
 
     croak "Timeout waiting for response after ${timeout}s";
@@ -510,7 +511,7 @@ sub on_error {
         $message = $error->{data}{reason};
     }
     elsif ( $self->{protocol} eq 'ddp' ) {
-        $message = $error->{type} . " : " . $error->{reason};
+        $message = $error->{errname} . " : " . $error->{reason};
     }
     $self->{error} = $message;
     _log( $message, 'error' );
@@ -530,7 +531,8 @@ sub set_target {
 
     if ( $iqn =~ /^(iqn\.\d{4}-\d{2}\.[^:]+):(.+)$/ ) {
         my $prefix = $1;
-        my $target = $2;
+        my $suffix = $2;
+        my $target = ( split /:/, $suffix )[-1];
         $self->{target} = $target;
     }
     else {
@@ -565,10 +567,10 @@ sub iscsi_target_getid {
     }
 
     # If not cached, query the target
-    my $query  = _build_query( { name => $target_name } );
+    my $query   = _build_query( { name => $target_name } );
     my $options = { get => \1 };
-    my $result = $self->request( 'iscsi.target.query', $query, $options );
-    if (!$result){
+    my $result  = $self->request( 'iscsi.target.query', $query, $options );
+    if ( !$result ) {
         _log( "Failed to get target ID", 'error' );
         return;
     }
@@ -581,8 +583,8 @@ sub iscsi_target_getid {
 }
 
 sub iscsi_targetextent_query {
-    my $self   = shift;
-    my $params = shift;
+    my $self    = shift;
+    my $params  = shift;
     my $options = shift || {};
 
     my $query  = _build_query($params);
@@ -604,7 +606,7 @@ sub iscsi_lun_get {
 
     my $target_id = $self->iscsi_target_getid($target_name);
 
-    $query = _build_query( { path => $path } );
+    $query   = _build_query( { path => $path } );
     $options = { get => \1 };
     my $extent = $self->request( 'iscsi.extent.query', $query, $options );
     if ( !$extent ) {
@@ -612,10 +614,10 @@ sub iscsi_lun_get {
         return;
     }
 
-    $query = _build_query( { target => $target_id, extent => $extent->{id} } );
+    $query   = _build_query( { target => $target_id, extent => $extent->{id} } );
     $options = { get => \1 };
     my $targetextent = $self->request( 'iscsi.targetextent.query', $query, $options );
-    if (!$targetextent ) {
+    if ( !$targetextent ) {
         _log( "Target extent not found for target: $target_name", 'warn' );
         return;
     }
@@ -929,7 +931,7 @@ sub zfs_zpool_get {
         _log( "Failed to get zpool", 'error' );
         return;
     }
-    
+
     return $result;
 }
 
