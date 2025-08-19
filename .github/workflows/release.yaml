@@ -1,0 +1,44 @@
+name: release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release Please
+        id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          # For generic repos use "simple". Other options: go, node, python, rust, etc.
+          release-type: simple
+          # Your custom file names are fine—make sure these exist at repo root.
+          manifest-file: .rp-manifest.json
+          config-file: .rp-config.json
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      # Optional: quick log of what happened
+      - name: Show release-please outputs
+        run: |
+          echo "release_created=${{ steps.rp.outputs.release_created }}"
+          echo "tag_name=${{ steps.rp.outputs.tag_name }}"
+          echo "version=${{ steps.rp.outputs.version }}"
+
+      # Only notify the APT repo when a new release was published
+      - name: Notify APT repo (repository_dispatch)
+        if: ${{ steps.rp.outputs.release_created == 'true' }}
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          TAG="${{ steps.rp.outputs.tag_name }}"   # e.g., v1.2.3
+          echo "Dispatching with tag ${TAG}"
+          gh api repos/boomshankerx/proxmox-truenas-apt/dispatches \
+            -f event_type='release-published' \
+            -f client_payload="{\"tag_name\":\"${TAG}\"}"
