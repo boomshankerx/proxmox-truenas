@@ -1,0 +1,21 @@
+{
+  "packages": {
+    ".": {
+      "package-name": "proxmox-truenas",
+      "changelog-path": "CHANGELOG.md"
+    }
+  },
+  "changelog-types": [
+    { "type": "feat",     "section": "Added",       "hidden": false },
+    { "type": "fix",      "section": "Fixed",       "hidden": false },
+    { "type": "perf",     "section": "Performance", "hidden": false },
+    { "type": "refactor", "section": "Changed",     "hidden": false },
+    { "type": "revert",   "section": "Reverts",     "hidden": false },
+    { "type": "docs",     "section": "Docs",        "hidden": false },
+    { "type": "build",    "section": "Build",       "hidden": true  },
+    { "type": "ci",       "section": "CI",          "hidden": true  },
+    { "type": "test",     "section": "Tests",       "hidden": true  },
+    { "type": "chore",    "section": "Chores",      "hidden": true  },
+    { "type": "style",    "section": "Style",       "hidden": true  }
+  ]
+}
