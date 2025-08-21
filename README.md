@@ -31,7 +31,7 @@ libpve-storage-perl 8.3.7 / 9.0.13
 
 ```
 curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
-  | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-truenas.gpg
+  | gpg --dearmor -o /usr/share/keyrings/proxmox-truenas.gpg
 ```
 
 2. Add the repository
@@ -41,7 +41,7 @@ Proxmox 8 / Debian 12 (bookworm):
 ```
 echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
-| sudo tee /etc/apt/sources.list.d/proxmox-truenas.list
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
 
 Proxmox 9 / Debian 13 (trixie):
@@ -49,20 +49,20 @@ Proxmox 9 / Debian 13 (trixie):
 ```
 echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
-| sudo tee /etc/apt/sources.list.d/proxmox-truenas.list
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
 
 3. Update & install
 
 ```
-sudo apt update
-sudo apt install proxmox-truenas
+apt update
+apt install proxmox-truenas
 ```
 
 ## Manual Installation
 
 1. Download the latest release of the .deb file to your Proxmox host
-2. Install the .deb package using `sudo apt install <deb>`
+2. Install the .deb package using `apt install <deb>`
 3. Create ZFS over iSCSI connection
 
 ### Dependencies
