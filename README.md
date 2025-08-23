@@ -31,7 +31,7 @@ libpve-storage-perl 8.3.7 / 9.0.13
 
 ```
 curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
-  | gpg --dearmor -o /usr/share/keyrings/proxmox-truenas.gpg
+  | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
 ```
 
 2. Add the repository
@@ -39,7 +39,7 @@ curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
 Proxmox 8 / Debian 12 (bookworm):
 
 ```
-echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
 | tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
@@ -47,7 +47,7 @@ https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
 Proxmox 9 / Debian 13 (trixie):
 
 ```
-echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
 | tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
