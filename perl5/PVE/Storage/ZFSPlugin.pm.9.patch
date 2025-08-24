@@ -1,5 +1,5 @@
---- ZFSPlugin.pm.9.orig	2025-08-09 20:01:59.933238391 -0600
-+++ ZFSPlugin.pm.9	2025-08-09 21:12:38.123808508 -0600
+--- ZFSPlugin.pm.9.orig	2025-08-24 11:33:12.961326743 -0600
++++ ZFSPlugin.pm.9	2025-08-24 11:35:53.196381120 -0600
 @@ -11,6 +11,7 @@
  
  use base qw(PVE::Storage::ZFSPoolPlugin);
@@ -8,7 +8,7 @@
  use PVE::Storage::LunCmd::Istgt;
  use PVE::Storage::LunCmd::Iet;
  use PVE::Storage::LunCmd::LIO;
-@@ -20,32 +21,35 @@
+@@ -20,19 +21,20 @@
  my $id_rsa_path = '/etc/pve/priv/zfs';
  
  my $lun_cmds = {
@@ -37,38 +37,26 @@
  };
  
  my $zfs_get_base = sub {
-     my ($scfg) = @_;
- 
-     if ($scfg->{iscsiprovider} eq 'comstar') {
--        return PVE::Storage::LunCmd::Comstar::get_base($scfg);
-+        return PVE::Storage::LunCmd::Comstar::get_base;
+@@ -46,6 +48,8 @@
+         return PVE::Storage::LunCmd::Iet::get_base($scfg);
+     } elsif ($scfg->{iscsiprovider} eq 'LIO') {
+         return PVE::Storage::LunCmd::LIO::get_base($scfg);
 +    } elsif ($scfg->{iscsiprovider} eq 'truenas') {
 +        return PVE::Storage::LunCmd::TrueNAS::get_base;
-     } elsif ($scfg->{iscsiprovider} eq 'istgt') {
--        return PVE::Storage::LunCmd::Istgt::get_base($scfg);
-+        return PVE::Storage::LunCmd::Istgt::get_base;
-     } elsif ($scfg->{iscsiprovider} eq 'iet') {
--        return PVE::Storage::LunCmd::Iet::get_base($scfg);
-+        return PVE::Storage::LunCmd::Iet::get_base;
-     } elsif ($scfg->{iscsiprovider} eq 'LIO') {
--        return PVE::Storage::LunCmd::LIO::get_base($scfg);
-+        return PVE::Storage::LunCmd::LIO::get_base;
      } else {
          $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
      }
-@@ -61,8 +65,10 @@
- 
-     if ($lun_cmds->{$method}) {
-         if ($scfg->{iscsiprovider} eq 'comstar') {
-+            $msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
+@@ -69,6 +73,9 @@
+             $msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
+         } elsif ($scfg->{iscsiprovider} eq 'LIO') {
+             $msg = PVE::Storage::LunCmd::LIO::run_lun_command($scfg, $timeout, $method, @params);
 +        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
-             $msg =
--                PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
++            $msg =
 +                PVE::Storage::LunCmd::TrueNAS::run_lun_command($scfg, $timeout, $method, @params);
-         } elsif ($scfg->{iscsiprovider} eq 'istgt') {
-             $msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
-         } elsif ($scfg->{iscsiprovider} eq 'iet') {
-@@ -186,6 +192,28 @@
+         } else {
+             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
+         }
+@@ -186,6 +193,28 @@
              description => "iscsi provider",
              type => 'string',
          },
@@ -97,7 +85,7 @@
          # this will disable write caching on comstar and istgt.
          # it is not implemented for iet. iet blockio always operates with
          # writethrough caching when not in readonly mode
-@@ -219,14 +247,19 @@
+@@ -219,14 +248,19 @@
          nodes => { optional => 1 },
          disable => { optional => 1 },
          portal => { fixed => 1 },
@@ -119,7 +107,7 @@
          lio_tpg => { optional => 1 },
          content => { optional => 1 },
          bwlimit => { optional => 1 },
-@@ -267,6 +300,8 @@
+@@ -267,6 +301,8 @@
                  log_warn($message);
                  $base_path = '/dev/zvol';
              }
