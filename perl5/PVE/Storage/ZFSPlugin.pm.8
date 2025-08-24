@@ -41,15 +41,15 @@ my $zfs_get_base = sub {
     my ($scfg) = @_;
 
     if ($scfg->{iscsiprovider} eq 'comstar') {
-        return PVE::Storage::LunCmd::Comstar::get_base;
+        return PVE::Storage::LunCmd::Comstar::get_base($scfg);
+    } elsif ($scfg->{iscsiprovider} eq 'istgt') {
+        return PVE::Storage::LunCmd::Istgt::get_base($scfg);
+    } elsif ($scfg->{iscsiprovider} eq 'iet') {
+        return PVE::Storage::LunCmd::Iet::get_base($scfg);
+    } elsif ($scfg->{iscsiprovider} eq 'LIO') {
+        return PVE::Storage::LunCmd::LIO::get_base($scfg);
     } elsif ($scfg->{iscsiprovider} eq 'truenas') {
         return PVE::Storage::LunCmd::TrueNAS::get_base;
-    } elsif ($scfg->{iscsiprovider} eq 'istgt') {
-        return PVE::Storage::LunCmd::Istgt::get_base;
-    } elsif ($scfg->{iscsiprovider} eq 'iet') {
-        return PVE::Storage::LunCmd::Iet::get_base;
-    } elsif ($scfg->{iscsiprovider} eq 'LIO') {
-        return PVE::Storage::LunCmd::LIO::get_base;
     } else {
         $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
     }
@@ -65,16 +65,16 @@ sub zfs_request {
 
     if ($lun_cmds->{$method}) {
         if ($scfg->{iscsiprovider} eq 'comstar') {
-            $msg = PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
-        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
             $msg =
-                PVE::Storage::LunCmd::TrueNAS::run_lun_command($scfg, $timeout, $method, @params);
+                PVE::Storage::LunCmd::Comstar::run_lun_command($scfg, $timeout, $method, @params);
         } elsif ($scfg->{iscsiprovider} eq 'istgt') {
             $msg = PVE::Storage::LunCmd::Istgt::run_lun_command($scfg, $timeout, $method, @params);
         } elsif ($scfg->{iscsiprovider} eq 'iet') {
             $msg = PVE::Storage::LunCmd::Iet::run_lun_command($scfg, $timeout, $method, @params);
         } elsif ($scfg->{iscsiprovider} eq 'LIO') {
             $msg = PVE::Storage::LunCmd::LIO::run_lun_command($scfg, $timeout, $method, @params);
+        } elsif ($scfg->{iscsiprovider} eq 'truenas') {
+            $msg =PVE::Storage::LunCmd::TrueNAS::run_lun_command($scfg, $timeout, $method, @params);
         } else {
             $zfs_unknown_scsi_provider->($scfg->{iscsiprovider});
         }
