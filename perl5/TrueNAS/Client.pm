@@ -42,7 +42,7 @@ sub new {
         max_retries => 3,
         protocol    => 'jsonrpc',
         sock        => undef,
-        timeout     => 10,
+        timeout     => 60,
         lastcall    => undef,
 
         # Message Handling

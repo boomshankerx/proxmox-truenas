@@ -8,7 +8,7 @@ This plugin was made possible by the great work at <https://github.com/TheGrandW
 
 [![Donate](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
 
-Thank you for supporting open-source. Made with love for the community. 
+Thank you for supporting open-source. Made with love for the community.
 
 ## Compatibility
 
@@ -28,42 +28,45 @@ libpve-storage-perl 8.3.7 / 9.0.13
 ### APT Repository (Recommended)
 
 1. Import the signing key
+
 ```
 curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
-  | sudo gpg --dearmor -o /usr/share/keyrings/proxmox-truenas.gpg
+  | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
 ```
 
 2. Add the repository
 
 Proxmox 8 / Debian 12 (bookworm):
+
 ```
-echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
-| sudo tee /etc/apt/sources.list.d/proxmox-truenas.list
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
 
 Proxmox 9 / Debian 13 (trixie):
 
 ```
-echo "deb [signed-by=/usr/share/keyrings/proxmox-truenas.gpg] \
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
 https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
-| sudo tee /etc/apt/sources.list.d/proxmox-truenas.list
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
 ```
 
 3. Update & install
-```
-sudo apt update
-sudo apt install proxmox-truenas
-```
 
+```
+apt update
+apt install proxmox-truenas
+```
 
 ## Manual Installation
 
 1. Download the latest release of the .deb file to your Proxmox host
-2. Install the .deb package using `sudo apt install <deb>`
+2. Install the .deb package using `apt install <deb>`
 3. Create ZFS over iSCSI connection
 
 ### Dependencies
+
 If you want to install dependencies manually
 
 ```
@@ -101,21 +104,24 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-# ** **ALPHA** ** Custom Plugin with full API support for TrueNAS 25.10  
+# ****ALPHA**** Custom Plugin with full API support for TrueNAS 25.10  
 
 Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
 
 **BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
 
 ## Installation
+
 ```
 apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
 ```
+
 ```
 ./deploy.sh
 ```
 
 ## Example config
+
 ```
 truenas: nas
     blocksize 16k
