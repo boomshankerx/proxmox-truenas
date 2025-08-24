@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.92](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.91...v1.0.92) (2025-08-24)
+
+
+### Bug Fixes
+
+* Fixed v8 patch regression in get_base accepting $scfg ([c661ddd](https://github.com/boomshankerx/proxmox-truenas/commit/c661ddd905774fdbff8ed955289e966f42a1f7d4))
+
 ## [1.0.91](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.90...v1.0.91) (2025-08-24)
 
 
