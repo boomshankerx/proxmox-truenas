@@ -806,10 +806,8 @@ sub zfs_zvol_get {
 }
 
 sub zfs_zvol_list {
-    my $self   = shift;
-    my @params = shift;
-
-    my $pool = @params[0];
+    my $self = shift;
+    my $pool = shift;
 
     my $query   = [ [ 'name', '^', $pool ], [ 'type', '=', 'VOLUME' ] ];
     my $options = {
