@@ -819,7 +819,7 @@ sub zfs_zvol_list {
         $text .= $zvol->{name} . " " . ( $zvol->{volsize}{rawvalue} || '-' ) . " " . ( $zvol->{origin}{rawvalue} || '-' ) . " " . ( lc( $zvol->{type} ) ) . " " . ( $zvol->{refquota}{rawvalue} // '-' ) . "\n";
     }
 
-    _log("Query zvols: $pool");
+    _log("Queried zvols: $pool");
 
     return $text;
 }
@@ -926,7 +926,7 @@ sub zfs_zpool_get {
         return;
     }
 
-    _log("Query zpool: $pool");
+    _log("Queried zpool: $pool");
 
     return $result;
 }
