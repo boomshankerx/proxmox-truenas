@@ -12,8 +12,8 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Compatibility
 
-Proxmox VE 8.4.11 / 9.0.5  
-pve-manager 8.4.11 / 9.0.5  
+Proxmox VE 8.4.11 / 9.0.6  
+pve-manager 8.4.11 / 9.0.6  
 libpve-storage-perl 8.3.7 / 9.0.13  
 
 ## Migrating from freenas-proxmox
@@ -125,12 +125,9 @@ apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl l
 ```
 truenas: nas
     blocksize 16k
-    iscsiprovider truenas
     pool tank/proxmox
     portal 10.0.0.1
     target iqn.2005-10.org.freenas.ctl:proxmox
-    content images
-    nowritecache 0
     sparse 1
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
