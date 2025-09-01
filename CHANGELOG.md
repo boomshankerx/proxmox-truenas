@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.93](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.92...v1.0.93) (2025-09-01)
+
+
+### Bug Fixes
+
+* Added iscsi lun delete in free_image to prevent busy dataset issue ([62a6ced](https://github.com/boomshankerx/proxmox-truenas/commit/62a6ced64badddc2b6fc0da75226b25fc2a10fed))
+* fixed bug in zfs_zvol_list ([62a6ced](https://github.com/boomshankerx/proxmox-truenas/commit/62a6ced64badddc2b6fc0da75226b25fc2a10fed))
+* Removed array refrence in zfs_zvol_list ([cd8303d](https://github.com/boomshankerx/proxmox-truenas/commit/cd8303d469ba0b73f75a20ace1879bf9ab29f2f4))
+
 ## [1.0.92](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.91...v1.0.92) (2025-08-24)
 
 
