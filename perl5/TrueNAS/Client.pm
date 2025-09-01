@@ -809,11 +809,12 @@ sub zfs_zvol_list {
     my $self   = shift;
     my @params = shift;
 
-    my $query   = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
+    my $pool = @params[0];
+
+    my $query   = [ [ 'name', '^', $pool ], [ 'type', '=', 'VOLUME' ] ];
     my $options = {
         extra  => { retrieve_children => \0 },
         select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ]
-
     };
     my $result = $self->request( 'pool.dataset.query', $query, $options );
     if ( $self->has_error ) {
@@ -824,6 +825,8 @@ sub zfs_zvol_list {
     for my $zvol (@$result) {
         $text .= $zvol->{name} . " " . ( $zvol->{volsize}{rawvalue} || '-' ) . " " . ( $zvol->{origin}{rawvalue} || '-' ) . " " . ( lc( $zvol->{type} ) ) . " " . ( $zvol->{refquota}{rawvalue} // '-' ) . "\n";
     }
+
+    _log("Query zvols: $pool");
 
     return $text;
 }
@@ -921,8 +924,6 @@ sub zfs_zvol_rename {
 sub zfs_zpool_get {
     my ( $self, $pool ) = @_;
 
-    _log("Query zpool: $pool");
-
     my $query   = [ [ 'name', '=', $pool ] ];
     my $options = { get => \1 };
 
@@ -931,6 +932,8 @@ sub zfs_zpool_get {
         _log( "Failed to get zpool", 'error' );
         return;
     }
+
+    _log("Query zpool: $pool");
 
     return $result;
 }

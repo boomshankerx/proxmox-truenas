@@ -7,7 +7,6 @@ use warnings;
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::RPCEnvironment;
 
-# use lib '/root/proxmox-truenas/perl5';
 use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
@@ -138,8 +137,7 @@ sub truenas_client_connect {
     return $result;
 }
 
-# Storage implementation
-########################
+# --- Storage implementation --------------------------------------------------------------
 
 sub alloc_image {
     my ( $class, $storeid, $scfg, $vmid, $fmt, $name, $size ) = @_;
@@ -223,6 +221,7 @@ sub free_image {
 
     for ( my $i = 0 ; $i < 6 ; $i++ ) {
         truenas_client_init($scfg);
+        $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
         my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
         last if $result;
         sleep($i * 3);
@@ -518,17 +517,14 @@ sub deactivate_volume {
     return 1;
 }
 
-# list_images DONE
-
-# ZFS operations
-################
+# --- ZFS operations --------------------------------------------------------------
 
 sub zfs_list_zvol {
     my ($class) = shift;
     my ($scfg)  = shift;
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_list();
+    my $result = $truenas_client->zfs_zvol_list($scfg->{pool});
     my $zvols  = PVE::Storage::ZFSPoolPlugin::zfs_parse_zvol_list( $result, $scfg->{pool} );
     return {} if !$zvols;
 
