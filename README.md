@@ -106,7 +106,7 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 
 # ** **BETA** ** Custom Storage Plugin with full API support for TrueNAS 25.10  
 
-Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
+Included in this repo is a beta version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
 
 **BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
 
