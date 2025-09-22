@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.94](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.93...v1.0.94) (2025-09-22)
+
+
+### Bug Fixes
+
+* Changed Handshake failed message to warn ([aceec71](https://github.com/boomshankerx/proxmox-truenas/commit/aceec71011bb450043669947208fb99b26d6a4ab))
+
 ## [1.0.93](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.92...v1.0.93) (2025-09-12)
 
 
