@@ -217,7 +217,7 @@ sub _connect {
         };
         if ( $@ || !$handshake->is_done ) {
             $last_error = $@ || $handshake->error;
-            _log( "Handshake failed: $last_error", 'error' );
+            _log( "Handshake failed: $last_error", 'warn' );
             close($sock) if $sock;
             $sock = undef;
             next;
