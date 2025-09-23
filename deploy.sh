@@ -66,6 +66,7 @@ if [ $patch ]; then
 
 else
   echo "[+] Copying TrueNAS Storage Plugin..."
+  mkdir -p /usr/share/perl5/PVE/Storage/Custom
   cp perl5/PVE/Storage/Custom/TrueNAS.pm /usr/share/perl5/PVE/Storage/Custom
 fi
 

@@ -12,8 +12,8 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Compatibility
 
-Proxmox VE 8.4.11 / 9.0.5  
-pve-manager 8.4.11 / 9.0.5  
+Proxmox VE 8.4.11 / 9.0.6  
+pve-manager 8.4.11 / 9.0.6  
 libpve-storage-perl 8.3.7 / 9.0.13  
 
 ## Migrating from freenas-proxmox
@@ -104,9 +104,9 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-# ****ALPHA**** Custom Plugin with full API support for TrueNAS 25.10  
+# ** **BETA** ** Custom Storage Plugin with full API support for TrueNAS 25.10  
 
-Included in this repo is an alpha version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
+Included in this repo is a beta version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
 
 **BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
 
@@ -121,16 +121,13 @@ apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl l
 ```
 
 ## Example config
-
+Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
 ```
 truenas: nas
     blocksize 16k
-    iscsiprovider truenas
     pool tank/proxmox
     portal 10.0.0.1
     target iqn.2005-10.org.freenas.ctl:proxmox
-    content images
-    nowritecache 0
     sparse 1
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1

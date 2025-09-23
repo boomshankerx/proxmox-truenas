@@ -18,6 +18,8 @@ use PVE::SafeSyslog;
 use Scalar::Util     qw(reftype);
 use TrueNAS::Helpers qw(_log _debug justify bytes2gb);
 
+my $MAX_LUNS = 255;
+
 sub new {
     my ( $class, $scfg ) = @_;
 
@@ -100,6 +102,7 @@ sub request {
 
 sub _authenticate {
     my ($self) = @_;
+
     my $message;
     my $result;
 
@@ -136,6 +139,7 @@ sub _call {
     my $self    = shift;
     my $message = shift;
     my $timeout = shift // $self->{timeout};
+
     my $result;
     my $response;
 
@@ -213,7 +217,7 @@ sub _connect {
         };
         if ( $@ || !$handshake->is_done ) {
             $last_error = $@ || $handshake->error;
-            _log( "Handshake failed: $last_error", 'error' );
+            _log( "Handshake failed: $last_error", 'warn' );
             close($sock) if $sock;
             $sock = undef;
             next;
@@ -231,6 +235,7 @@ sub _connect {
 # Gracefully close the WebSocket connection
 sub _disconnect {
     my ($self) = @_;
+
     return unless $self->{sock};
 
     close( $self->{sock} );
@@ -258,6 +263,7 @@ sub _handle_response {
         on_error( $self, $error );
         return;
     }
+    $self->{error}  = undef;
     $self->{result} = $result;
 
     _log( "Result: " . Dumper($result), 'debug' );
@@ -301,10 +307,10 @@ sub _is_connected {
 
 # Send data over the WebSocket
 sub _send {
+    my ( $self, $message ) = @_;
 
     _log( "Called", 'debug' );
 
-    my ( $self, $message ) = @_;
     my $frame  = Protocol::WebSocket::Frame->new($message);
     my $result = syswrite( $self->{sock}, $frame->to_bytes );
     croak "Write failed: $!" unless defined $result;
@@ -312,8 +318,7 @@ sub _send {
 
 # Recieve data from the WebSocket with timeout
 sub _receive {
-    my $self    = shift;
-    my $timeout = shift;
+    my ( $self, $timeout ) = @_;
 
     _log( "Called", 'debug' );
 
@@ -503,8 +508,8 @@ sub _message_sanatize {
 # EVENTS
 
 sub on_error {
-    my $self  = shift;
-    my $error = shift;
+    my ( $self, $error ) = @_;
+
     my $message;
 
     if ( $self->{protocol} eq 'jsonrpc' ) {
@@ -550,6 +555,7 @@ sub has_error {
 
 sub iscsi_global_config {
     my ($self) = @_;
+
     my $result = $self->request('iscsi.global.config');
     if ( $self->has_error ) {
         return;
@@ -558,8 +564,7 @@ sub iscsi_global_config {
 }
 
 sub iscsi_target_getid {
-    my $self        = shift;
-    my $target_name = shift;
+    my ( $self, $target_name ) = @_;
 
     # Check target cache first
     if ( defined $self->{targets}{$target_name} ) {
@@ -597,10 +602,9 @@ sub iscsi_targetextent_query {
 }
 
 sub iscsi_lun_get {
+    my ( $self, $path ) = @_;
 
-    my $self        = shift;
-    my $path        = shift;
-    my $target_name = shift || $self->{target};
+    my $target_name = $self->{target};
     my $query;
     my $options;
 
@@ -624,15 +628,14 @@ sub iscsi_lun_get {
 
     $extent->{lunid}  = $targetextent->{lunid};
     $extent->{target} = $target_id;
+    $extent->{targetextent} = $targetextent->{id};
 
     return $extent;
 
 }
 
 sub iscsi_lun_create {
-    my $self     = shift;
-    my $path     = shift;
-    my $MAX_LUNS = shift || 255;
+    my ( $self, $path ) = @_;
 
     _log( $path, 'debug' );
 
@@ -681,7 +684,9 @@ sub iscsi_lun_delete {
         _log( "LUN not found: $path", 'error' );
         return;
     }
-    my $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
+    my $target_id = $self->iscsi_target_getid( $self->{target} );
+    my $result = $self->request( 'iscsi.targetextent.delete', $lun->{targetextent}, \1 ); #Force delete
+    $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
     if ( $self->has_error ) {
         _log( "Failed to delete LUN", 'error' );
         return;
@@ -694,7 +699,7 @@ sub iscsi_lun_delete {
 }
 
 sub iscsi_lun_nextid {
-    my $self = shift;
+    my ($self) = @_;
 
     my $target_id     = $self->iscsi_target_getid( $self->{target} );
     my $targetextents = $self->iscsi_targetextent_query( { target => $target_id } );
@@ -717,8 +722,7 @@ sub iscsi_lun_nextid {
 }
 
 sub iscsi_lun_recreate {
-    my $self = shift;
-    my $path = shift;
+    my ( $self, $path ) = @_;
 
     ( my $lun_path = $path ) =~ s{/dev/}{};
 
@@ -728,8 +732,7 @@ sub iscsi_lun_recreate {
 }
 
 sub zfs_snapshot_create {
-    my $self     = shift;
-    my $snapshot = shift;
+    my ( $self, $snapshot ) = @_;
 
     my ( $dataset, $name ) = split( '@', $snapshot );
 
@@ -746,8 +749,7 @@ sub zfs_snapshot_create {
 }
 
 sub zfs_snapshot_list {
-    my $self    = shift;
-    my $dataset = shift;
+    my ( $self, $dataset ) = @_;
 
     my $query = [ [ 'dataset', '=', $dataset ] ];
 
@@ -762,8 +764,7 @@ sub zfs_snapshot_list {
 }
 
 sub zfs_snapshot_delete {
-    my $self     = shift;
-    my $snapshot = shift;
+    my ( $self, $snapshot ) = @_;
 
     my $result = $self->request( 'pool.snapshot.delete', $snapshot );
     if ( $self->has_error ) {
@@ -777,8 +778,7 @@ sub zfs_snapshot_delete {
 }
 
 sub zfs_snapshot_rollback {
-    my $self     = shift;
-    my $snapshot = shift;
+    my ( $self, $snapshot ) = @_;
 
     my $result = $self->request( 'pool.snapshot.rollback', $snapshot );
     if ( $self->has_error ) {
@@ -806,14 +806,12 @@ sub zfs_zvol_get {
 }
 
 sub zfs_zvol_list {
-    my $self   = shift;
-    my @params = shift;
+    my ( $self, $pool ) = @_;
 
-    my $query   = [ [ 'name', '^', 'tank/proxmox' ], [ 'type', '=', 'VOLUME' ] ];
+    my $query   = [ [ 'name', '^', $pool ], [ 'type', '=', 'VOLUME' ] ];
     my $options = {
         extra  => { retrieve_children => \0 },
         select => [ 'name', 'volsize', 'origin', 'type', 'refquota' ]
-
     };
     my $result = $self->request( 'pool.dataset.query', $query, $options );
     if ( $self->has_error ) {
@@ -824,6 +822,8 @@ sub zfs_zvol_list {
     for my $zvol (@$result) {
         $text .= $zvol->{name} . " " . ( $zvol->{volsize}{rawvalue} || '-' ) . " " . ( $zvol->{origin}{rawvalue} || '-' ) . " " . ( lc( $zvol->{type} ) ) . " " . ( $zvol->{refquota}{rawvalue} // '-' ) . "\n";
     }
+
+    _log("Queried zvols: $pool");
 
     return $text;
 }
@@ -921,8 +921,6 @@ sub zfs_zvol_rename {
 sub zfs_zpool_get {
     my ( $self, $pool ) = @_;
 
-    _log("Query zpool: $pool");
-
     my $query   = [ [ 'name', '=', $pool ] ];
     my $options = { get => \1 };
 
@@ -931,6 +929,8 @@ sub zfs_zpool_get {
         _log( "Failed to get zpool", 'error' );
         return;
     }
+
+    _log("Queried zpool: $pool");
 
     return $result;
 }
