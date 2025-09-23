@@ -96,14 +96,14 @@ sub truenas_client_init {
       : $scfg->{portal};
 
     if ( !defined $truenas_server_list->{$apihost} ) {
-        _log("Client New: ($apihost)", 'debug');
+        _log( "Client New: ($apihost)", 'debug' );
         $result = truenas_client_connect($scfg);
         _log( "Version: " . $result );
     }
     else {
         $truenas_client = $truenas_server_list->{$apihost};
         $truenas_client->set_target( $scfg->{target} );
-        _log("Client: ($apihost)", 'debug');
+        _log( "Client: ($apihost)", 'debug' );
     }
 
     $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
@@ -166,7 +166,7 @@ sub alloc_image {
 sub create_base {
     my ( $class, $storeid, $scfg, $volname ) = @_;
 
-    _log("Called", 'debug');
+    _log( "Called", 'debug' );
 
     my $snap = '__base__';
 
@@ -219,14 +219,14 @@ sub free_image {
 
     my ( $vtype, $name, $vmid ) = $class->parse_volname($volname);
 
-    for ( my $i = 0 ; $i < 6 ; $i++ ) {
-        truenas_client_init($scfg);
-        $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
+    truenas_client_init($scfg);
+    $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
+    for ( my $i = 1 ; $i <= 5 ; $i++ ) {
         my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
         last if $result;
-        sleep($i * 3);
+        _log( "Retrying zvol delete in " . ($i * 5) . " seconds", 'info' );
+        sleep( $i * 5 );
     }
-
     return undef;
 }
 
@@ -234,7 +234,7 @@ sub free_image {
 # die to abort addition if there are (grave) problems
 # NOTE: runs in a storage config *locked* context
 sub on_add_hook {
-    my ( $class, $storeid, $scfg, %param ) = @_;
+    my ( $class, $storeid, $scfg, %sensitive ) = @_;
 
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
@@ -268,7 +268,7 @@ sub path {
 sub rename_volume {
     my ( $class, $scfg, $storeid, $source_volname, $target_vmid, $target_volname ) = @_;
 
-    _log("Called", 'debug');
+    _log( "Called", 'debug' );
 
     my ( undef, $source_image, $source_vmid, $base_name, $base_vmid, undef, $format, ) = $class->parse_volname($source_volname);
     $target_volname = $class->find_free_diskname( $storeid, $scfg, $target_vmid, $format )
@@ -431,7 +431,7 @@ sub volume_size_info {
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_zvol_get("$scfg->{pool}/$vname");
 
-    my $size = $result->{volsize}{rawvalue} || 0;
+    my $size = $result->{volsize}{rawvalue}       || 0;
     my $used = $result->{usedbydataset}{rawvalue} || 0;
 
     if ( $size =~ /^(\d+)$/ ) {
@@ -524,7 +524,7 @@ sub zfs_list_zvol {
     my ($scfg)  = shift;
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_list($scfg->{pool});
+    my $result = $truenas_client->zfs_zvol_list( $scfg->{pool} );
     my $zvols  = PVE::Storage::ZFSPoolPlugin::zfs_parse_zvol_list( $result, $scfg->{pool} );
     return {} if !$zvols;
 

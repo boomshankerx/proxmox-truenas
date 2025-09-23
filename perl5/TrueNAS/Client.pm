@@ -263,6 +263,7 @@ sub _handle_response {
         on_error( $self, $error );
         return;
     }
+    $self->{error}  = undef;
     $self->{result} = $result;
 
     _log( "Result: " . Dumper($result), 'debug' );
