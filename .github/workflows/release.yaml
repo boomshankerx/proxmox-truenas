@@ -42,5 +42,4 @@ jobs:
           gh api repos/boomshankerx/proxmox-truenas-apt/dispatches \
             --method POST \
             --raw-field event_type=release-published \
-            --raw-field client_payload="{\"tag_name\":\"${TAG}\"}"
-
+            -F client_payload="{\"tag_name\":\"${TAG}\"}"
