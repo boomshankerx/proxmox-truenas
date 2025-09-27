@@ -11,11 +11,11 @@ use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
-my $base           = '/dev/zvol';
-my $dev_prefix     = "/dev/";
-my $MAX_LUNS       = 255;           # Max LUNS per target  the iSCSI server
-my $truenas_client = undef;         # Pointer to entry in $truenas_server_list
-my $truenas_server_list = undef;    # API connection HashRef using the IP address of the server
+my $base                = '/dev/zvol';
+my $dev_prefix          = "/dev/";
+my $MAX_LUNS            = 255;           # Max LUNS per target  the iSCSI server
+my $truenas_client      = undef;         # Pointer to entry in $truenas_server_list
+my $truenas_server_list = undef;         # API connection HashRef using the IP address of the server
 
 # my $truenas_iscsi_global      = undef;         # Pointer to entry in $truenas_iscsi_global_list
 # my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server

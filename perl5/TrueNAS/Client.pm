@@ -626,8 +626,8 @@ sub iscsi_lun_get {
         return;
     }
 
-    $extent->{lunid}  = $targetextent->{lunid};
-    $extent->{target} = $target_id;
+    $extent->{lunid}        = $targetextent->{lunid};
+    $extent->{target}       = $target_id;
     $extent->{targetextent} = $targetextent->{id};
 
     return $extent;
@@ -685,8 +685,8 @@ sub iscsi_lun_delete {
         return;
     }
     my $target_id = $self->iscsi_target_getid( $self->{target} );
-    my $result = $self->request( 'iscsi.targetextent.delete', $lun->{targetextent}, \1 ); #Force delete
-    $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
+    my $result    = $self->request( 'iscsi.targetextent.delete', $lun->{targetextent}, \1 );    # Force delete
+    $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );                      # Force delete
     if ( $self->has_error ) {
         _log( "Failed to delete LUN", 'error' );
         return;
