@@ -41,6 +41,5 @@ jobs:
           echo "Dispatching with tag ${TAG}"
           gh api repos/boomshankerx/proxmox-truenas-apt/dispatches \
             --method POST \
-            --raw-field event_type=release-published \
-            --raw-field client_payload="{\"tag_name\":\"${TAG}\"}"
-
+            -f event_type=release-published \
+            -F "client_payload[tag_name]=${TAG}"
