@@ -4,17 +4,22 @@ dpkg-query -W pve-manager
 dpkg-query -W libpve-storage-perl
 
 PATH_APIDocs="/usr/share/pve-docs/api-viewer/apidocs.js"
-PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
+PATH_Custom="/usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm"
+PATH_Helper="/usr/share/perl5/TrueNAS/Helpers.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
+PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
 PATCH_ARGS="-p1 -b --ignore-whitespace --verbose"
 
 ver=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
-
 
 POSITIONAL_ARGS=()
 
 while [[ $# -gt 0 ]]; do
   case $1 in
+    -d|--debug)
+      debug=true
+      shift
+      ;;
     -r|--reinstall)
       reinstall=true
       shift 
@@ -43,10 +48,11 @@ else
     mv ${PATH_Manager}.orig ${PATH_Manager}
 fi
 
-
 # Patch ZFS over iSCSI plugin files
 if [ $patch ]; then
   echo "[+] Patching ZFS over iSCSI..."
+
+  rm -f ${PATH_Custom}
 
   cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
 
@@ -70,6 +76,9 @@ fi
 echo "[+] Copying TrueNAS Client..."
 rsync perl5/TrueNAS /usr/share/perl5/ -av --delete
 
+if [ $debug ]; then
+  sed -i "s/log_level => 'info'/log_level => 'debug'/g" ${PATH_Helper}
+fi
 
 echo "[+] Restarting Proxmox services..."
 systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy

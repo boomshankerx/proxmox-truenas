@@ -73,6 +73,7 @@ sub _create_lu {
 
     _log($lun_path);
 
+    sleep(1);    # wait 1 second to prevent race condition from zvol creation to lun creation
     my $result = $truenas_client->iscsi_lun_create($lun_path);
     
     if (!$result) {

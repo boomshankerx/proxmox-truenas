@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.95](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.94...v1.0.95) (2025-09-23)
+
+
+### Bug Fixes
+
+* Fixed progressive retry for deleting busy dataset ([1a52c72](https://github.com/boomshankerx/proxmox-truenas/commit/1a52c72ac4be0d58b190d0e4e191f841c315a786))
+
 ## [1.0.94](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.93...v1.0.94) (2025-09-22)
 
 
