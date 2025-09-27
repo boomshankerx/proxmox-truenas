@@ -11,18 +11,14 @@ use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
-my $base                      = '/dev/zvol';
-my $MAX_LUNS                  = 255;           # Max LUNS per target  the iSCSI server
-my $truenas_server_list       = undef;         # API connection HashRef using the IP address of the server
-my $truenas_client            = undef;         # Pointer to entry in $truenas_server_list
-my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
-my $truenas_iscsi_global      = undef;         # Pointer to entry in $truenas_iscsi_global_list
-my $dev_prefix                = "/dev/";
+my $base           = '/dev/zvol';
+my $dev_prefix     = "/dev/";
+my $MAX_LUNS       = 255;           # Max LUNS per target  the iSCSI server
+my $truenas_client = undef;         # Pointer to entry in $truenas_server_list
+my $truenas_server_list = undef;    # API connection HashRef using the IP address of the server
 
-# FreeNAS API definitions
-my $truenas_product      = undef;
-my $truenas_version      = undef;
-my $truenas_release_type = "Production";
+# my $truenas_iscsi_global      = undef;         # Pointer to entry in $truenas_iscsi_global_list
+# my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
 
 sub api {
     return 12;
@@ -82,59 +78,43 @@ sub options {
     };
 }
 
-# TrueNAS
+# --- TrueNAS --------------------------------------------------------------------------------
 
-# Check to see what TrueNAS version we are running and set
-# the TrueNAS.pm to use the correct API version of TrueNAS
+# Initialize TrueNAS API client
 sub truenas_client_init {
     my $scfg    = shift;
     my $timeout = shift || 10;
-    my $result  = {};
-    my $apihost =
-      defined( $scfg->{truenas_apiv4_host} )
-      ? $scfg->{truenas_apiv4_host}
-      : $scfg->{portal};
 
+    my $apihost = $scfg->{truenas_apiv4_host};
+
+    # Check if a client exists for host
     if ( !defined $truenas_server_list->{$apihost} ) {
+
         _log( "Client New: ($apihost)", 'debug' );
-        $result = truenas_client_connect($scfg);
+
+        $truenas_client = TrueNAS::Client->new($scfg);
+        $truenas_server_list->{$apihost} = $truenas_client;
+
+        my $result = $truenas_client->request('system.version');
+        if ( !$result ) {
+            die "Unable to connect to the TrueNAS API service at '" . $truenas_client->{uri} . "'\n";
+        }
         _log( "Version: " . $result );
+
     }
     else {
         $truenas_client = $truenas_server_list->{$apihost};
         $truenas_client->set_target( $scfg->{target} );
+
         _log( "Client: ($apihost)", 'debug' );
     }
 
-    $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
-      ( !defined( $truenas_iscsi_global_list->{$apihost} ) )
-      ? $truenas_client->iscsi_global_config($scfg)
-      : $truenas_iscsi_global_list->{$apihost};
+    # $truenas_iscsi_global = $truenas_iscsi_global_list->{$apihost} =
+    #   ( !defined( $truenas_iscsi_global_list->{$apihost} ) )
+    #   ? $truenas_client->iscsi_global_config($scfg)
+    #   : $truenas_iscsi_global_list->{$apihost};
+
     return;
-}
-
-#
-# Connect to the TrueNAS API service
-sub truenas_client_connect {
-    my ($scfg) = @_;
-
-    my $apihost =
-      defined( $scfg->{truenas_apiv4_host} )
-      ? $scfg->{truenas_apiv4_host}
-      : $scfg->{portal};
-
-    if ( !defined $truenas_server_list->{$apihost} ) {
-        $truenas_server_list->{$apihost} = TrueNAS::Client->new($scfg);
-    }
-    my $client = $truenas_server_list->{$apihost};
-    my $result = $client->request('system.version');
-    if ( $client->{has_error} ) {
-        truenas_api_log_error();
-        die "Unable to connect to the TrueNAS API service at '" . $client->{uri} . "'\n";
-        return undef;
-    }
-    $truenas_client = $truenas_server_list->{$apihost};
-    return $result;
 }
 
 # --- Storage implementation --------------------------------------------------------------
@@ -224,7 +204,7 @@ sub free_image {
     for ( my $i = 1 ; $i <= 5 ; $i++ ) {
         my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
         last if $result;
-        _log( "Retrying zvol delete in " . ($i * 5) . " seconds", 'info' );
+        _log( "Retrying zvol delete in " . ( $i * 5 ) . " seconds", 'info' );
         sleep( $i * 5 );
     }
     return undef;
