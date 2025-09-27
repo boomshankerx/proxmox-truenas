@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.96](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.95...v1.0.96) (2025-09-27)
+
+
+### Bug Fixes
+
+* Add sleep to prevent race condition during LUN creation ([a0a584d](https://github.com/boomshankerx/proxmox-truenas/commit/a0a584d9cde8854293e5407338b9792a1b0de343))
+* Streamline Custom plugin truenas_client_init ([83f5af9](https://github.com/boomshankerx/proxmox-truenas/commit/83f5af902ccbe7b04c46664edcfb025ed60b0980))
+
 ## [1.0.95](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.94...v1.0.95) (2025-09-23)
 
 
