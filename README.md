@@ -12,8 +12,8 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Compatibility
 
-Proxmox VE 8.4.11 / 9.0.6  
-pve-manager 8.4.11 / 9.0.6  
+Proxmox VE 8.4.11 / 9.0.10  
+pve-manager 8.4.11 / 9.0.10  
 libpve-storage-perl 8.3.7 / 9.0.13  
 
 ## Migrating from freenas-proxmox
