@@ -1,4 +1,4 @@
-# TrueNAS over iSCSI Custom Storage Plugin for Proxmox
+# TrueNAS Patch for ZFS over iSCSI
 
 ## Acknowledgement
 
@@ -59,21 +59,19 @@ apt update
 apt install proxmox-truenas
 ```
 
-## Manual Installation
+## Configuration
 
-1. Download the latest release of the .deb file to your Proxmox host
-2. Install the .deb package using `apt install <deb>`
-3. Create ZFS over iSCSI connection
+### TrueNAS iSCSI
 
-### Dependencies
+This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
 
-If you want to install dependencies manually
+### TrueNAS API Key
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
 
-```
-apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
-```
+### Example Config (/etc/pve/storage.cfg)
 
-## Example config
+Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
 
 ```
 zfs: nas
@@ -93,7 +91,7 @@ zfs: nas
 ```
 
 This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
-<https://www.truenas.com/docs/scale/25.04/scaleuireference/shares/iscsisharesscreens/>
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
 
 ### NOTE: Please be aware that this plugin uses the TrueNAS APIs but still uses SSH keys
 
@@ -104,7 +102,8 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-# ** **BETA** ** TrueNAS over iSCSI Native Storage Plugin for TrueNAS 25.10
+# ** **BETA** ** 
+# TrueNAS over iSCSI Native Storage Plugin for TrueNAS 25.10
 
 Included in this repo is a beta version of a native storage plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in beta testing.
 
@@ -158,7 +157,17 @@ apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl l
 ./deploy.sh
 ```
 
-## Example config
+## Configuration
+
+### TrueNAS iSCSI
+
+This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
+
+### TrueNAS API Key
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
+
+### Example Config (/etc/pve/storage.cfg)
 
 Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
 
