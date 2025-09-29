@@ -78,18 +78,18 @@ apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl l
 ```
 zfs: nas
     blocksize 16k
+    content images
     iscsiprovider truenas
+    nowritecache 0
     pool tank/proxmox
     portal 10.0.0.1
-    target iqn.2005-10.org.freenas.ctl:proxmox
-    content images
-    nowritecache 0
     sparse 1
+    target iqn.2005-10.org.freenas.ctl:proxmox
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
+    truenas_password <PASSWORD>
     truenas_use_ssl 1
     truenas_user <USER>
-    truenas_password <PASSWORD>
 ```
 
 This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
@@ -104,13 +104,51 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-# ** **BETA** ** Custom Storage Plugin with full API support for TrueNAS 25.10  
+# ** **BETA** ** TrueNAS over iSCSI Native Storage Plugin for TrueNAS 25.10
 
-Included in this repo is a beta version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
+Included in this repo is a beta version of a native storage plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in beta testing.
+
+There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the UI in version 9.1. Until then the plugin can be configured in storage.cfg.
 
 **BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
 
 ## Installation
+
+### APT Repository (Recommended)
+
+1. Import the signing key
+
+```
+curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
+  | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
+```
+
+2. Add the repository
+
+Proxmox 8 / Debian 12 (bookworm):
+
+```
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
+https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
+```
+
+Proxmox 9 / Debian 13 (trixie):
+
+```
+echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
+https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
+| tee /etc/apt/sources.list.d/proxmox-truenas.list
+```
+
+3. Update & install
+
+```
+apt update
+apt install proxmox-truenas-native
+```
+
+### Manual Installation for testing
 
 ```
 apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
@@ -121,17 +159,19 @@ apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl l
 ```
 
 ## Example config
+
 Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
+
 ```
 truenas: nas
     blocksize 16k
     pool tank/proxmox
     portal 10.0.0.1
-    target iqn.2005-10.org.freenas.ctl:proxmox
     sparse 1
+    target iqn.2005-10.org.freenas.ctl:proxmox
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
+    truenas_password <PASSWORD>
     truenas_use_ssl 1
     truenas_user <USER>
-    truenas_password <PASSWORD>
 ```

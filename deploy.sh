@@ -3,12 +3,12 @@ dpkg-query -W pve-docs
 dpkg-query -W pve-manager
 dpkg-query -W libpve-storage-perl
 
+PATCH_ARGS="-p1 -b --ignore-whitespace --verbose"
 PATH_APIDocs="/usr/share/pve-docs/api-viewer/apidocs.js"
-PATH_Custom="/usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm"
 PATH_Helper="/usr/share/perl5/TrueNAS/Helpers.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
+PATH_Native="/usr/share/perl5/PVE/Storage/Custom/TrueNASPlugin.pm"
 PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
-PATCH_ARGS="-p1 -b --ignore-whitespace --verbose"
 
 ver=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
 
@@ -52,7 +52,8 @@ fi
 if [ $patch ]; then
   echo "[+] Patching ZFS over iSCSI..."
 
-  rm -f ${PATH_Custom}
+  echo "[+] Removing Native TrueNAS Plugin..."
+  rm -f ${PATH_Native}
 
   cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
 
@@ -64,13 +65,11 @@ if [ $patch ]; then
   echo "[+] Patching pvemanagerlib.js..."
   patch ${PATCH_ARGS} /usr/share/pve-manager/js/pvemanagerlib.js < pve-manager/js/pvemanagerlib.js.${ver}.patch
 
-  # echo "[+] Patching API docs..."
-  # patch ${PATCH_ARGS} -d /usr/share/pve-docs/api-viewer < pve-docs/api-viewer/apidoc.js.${ver}.patch
-
 else
   echo "[+] Copying TrueNAS Storage Plugin..."
   mkdir -p /usr/share/perl5/PVE/Storage/Custom
-  cp perl5/PVE/Storage/Custom/TrueNAS.pm /usr/share/perl5/PVE/Storage/Custom
+  cp perl5/PVE/Storage/Custom/TrueNASPlugin.pm /usr/share/perl5/PVE/Storage/Custom
+  [[ -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm ]] && rm -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm
 fi
 
 echo "[+] Copying TrueNAS Client..."
