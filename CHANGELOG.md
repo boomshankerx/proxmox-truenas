@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.97](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.96...v1.0.97) (2025-09-29)
+
+
+### Bug Fixes
+
+* Renamed native plugin TrueNASPlugin.pm ([d5a57ff](https://github.com/boomshankerx/proxmox-truenas/commit/d5a57ff294d550d35dfa292330882d9d85b0e73e))
+
 ## [1.0.96](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.95...v1.0.96) (2025-09-27)
 
 
