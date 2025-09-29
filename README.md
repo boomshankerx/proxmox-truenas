@@ -67,7 +67,17 @@ This plugin requires that TrueNAS iSCSI is properly configured prior to connecti
 <https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
 
 ### TrueNAS API Key
+
 <https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
+
+### SSH Key
+
+You will still need to configure the SSH connector for listing the ZFS Pools because this is currently being done in a Proxmox module (ZFSPoolPlugin.pm). To configure this please follow the steps at <https://pve.proxmox.com/wiki/Storage:_ZFS_over_iSCSI> that have to do with SSH between Proxmox VE and TrueNAS. The code segment should start out `mkdir /etc/pve/priv/zfs`.
+
+1. Remember to follow the instructions mentioned above for the SSH keys.
+2. Refresh the Proxmox GUI in your browser to load the new Javascript code.
+3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
+4. Thanks for your support.
 
 ### Example Config (/etc/pve/storage.cfg)
 
@@ -90,19 +100,8 @@ zfs: nas
     truenas_user <USER>
 ```
 
-This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
-<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
+# *** **BETA** ***
 
-### NOTE: Please be aware that this plugin uses the TrueNAS APIs but still uses SSH keys
-
-You will still need to configure the SSH connector for listing the ZFS Pools because this is currently being done in a Proxmox module (ZFSPoolPlugin.pm). To configure this please follow the steps at <https://pve.proxmox.com/wiki/Storage:_ZFS_over_iSCSI> that have to do with SSH between Proxmox VE and TrueNAS. The code segment should start out `mkdir /etc/pve/priv/zfs`.
-
-1. Remember to follow the instructions mentioned above for the SSH keys.
-2. Refresh the Proxmox GUI in your browser to load the new Javascript code.
-3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
-4. Thanks for your support.
-
-# ** **BETA** ** 
 # TrueNAS over iSCSI Native Storage Plugin for TrueNAS 25.10
 
 Included in this repo is a beta version of a native storage plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in beta testing.
@@ -149,10 +148,11 @@ apt install proxmox-truenas-native
 
 ### Manual Installation for testing
 
+#### Dependencies
 ```
 apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
 ```
-
+#### Deploy Script
 ```
 ./deploy.sh
 ```
@@ -165,6 +165,7 @@ This plugin requires that TrueNAS iSCSI is properly configured prior to connecti
 <https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
 
 ### TrueNAS API Key
+
 <https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
 
 ### Example Config (/etc/pve/storage.cfg)
