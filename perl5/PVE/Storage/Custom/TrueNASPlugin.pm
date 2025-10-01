@@ -31,6 +31,7 @@ sub type {
 sub plugindata {
     return {
         content                => [ { images => 1 }, { images => 1 } ],
+        format                 => [ { raw    => 1 }, 'raw' ],
         'sensitive-properties' => {},
     };
 }
