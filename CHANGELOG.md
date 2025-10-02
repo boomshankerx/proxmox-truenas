@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.98](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.97...v1.0.98) (2025-10-02)
+
+
+### Bug Fixes
+
+* Added format to plugindata ([a7a8b44](https://github.com/boomshankerx/proxmox-truenas/commit/a7a8b4431dfcb9694c047772a7a851a618f94a41))
+
 ## [1.0.97](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.96...v1.0.97) (2025-09-29)
 
 
