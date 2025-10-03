@@ -100,7 +100,7 @@ zfs: nas
     truenas_user <USER>
 ```
 
-# *** **BETA** ***
+# *****BETA*****
 
 # TrueNAS over iSCSI Native Storage Plugin for TrueNAS 25.10
 
@@ -149,28 +149,46 @@ apt install proxmox-truenas-native
 ### Manual Installation for testing
 
 #### Dependencies
+
 ```
 apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
 ```
+
 #### Deploy Script
+
 ```
 ./deploy.sh
 ```
 
 ## Configuration
 
-### TrueNAS iSCSI
+### TrueNAS
 
-This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
-<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
+<https://github.com/boomshankerx/proxmox-truenas/wiki/Configuration-Guide>
 
-### TrueNAS API Key
+### Proxmox
 
-<https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
+```
+pvesm add truenas truenas \
+--blocksize 16k \
+--pool tank/proxmox \
+--portal 10.0.0.1 \
+--target iqn.2005-10.org.freenas.ctl:proxmox \
+--sparse 1 \
+--truenas_apikey <APIKEY> \
+--truenas_apiv4_host 10.0.0.1 \
+--truenas_use_ssl 1
+```
 
-### Example Config (/etc/pve/storage.cfg)
+#### Known Bug
 
-Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
+The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
+
+```
+400 Result verification failed
+config: type check ('object') failed
+pvesm add <type> <storage> [OPTIONS]
+```
 
 ```
 truenas: nas
@@ -181,7 +199,5 @@ truenas: nas
     target iqn.2005-10.org.freenas.ctl:proxmox
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
-    truenas_password <PASSWORD>
     truenas_use_ssl 1
-    truenas_user <USER>
 ```
