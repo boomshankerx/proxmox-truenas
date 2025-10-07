@@ -69,7 +69,7 @@ sub options {
         nodes              => { optional => 1 },
         pool               => { fixed    => 0 },
         portal             => { fixed    => 1 },
-        shared             => { fixed    => 1 },
+        shared             => { optional => 1 },
         sparse             => { optional => 1 },
         target             => { fixed    => 0 },
         truenas_apikey     => { optional => 1 },
