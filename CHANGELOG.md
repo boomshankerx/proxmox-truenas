@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.0.99](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.98...v1.0.99) (2025-10-07)
+
+
+### Bug Fixes
+
+* Added content to native plugin options ([5a6d968](https://github.com/boomshankerx/proxmox-truenas/commit/5a6d96807a1e4f4106322c04763f754c837be764))
+* Added default shared option to native plugin. ([96b5665](https://github.com/boomshankerx/proxmox-truenas/commit/96b5665885040d3fa091321bc621d8ddfb46fdd3))
+* Default storage to shared in native plugin ([eb4fec6](https://github.com/boomshankerx/proxmox-truenas/commit/eb4fec64aa1f1593dd27f029753b80ff13fc7a3b))
+
 ## [1.0.98](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.97...v1.0.98) (2025-10-02)
 
 
