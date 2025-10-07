@@ -199,6 +199,7 @@ truenas: nas
     blocksize 16k
     pool tank/proxmox
     portal 10.0.0.1
+    shared 1
     sparse 1
     target iqn.2005-10.org.freenas.ctl:proxmox
     truenas_apikey <APIKEY>
