@@ -63,18 +63,19 @@ sub properties {
 
 sub options {
     return {
-        nodes              => { optional => 1 },
-        disable            => { optional => 1 },
-        portal             => { fixed    => 1 },
-        target             => { fixed    => 0 },
-        pool               => { fixed    => 0 },
         blocksize          => { fixed    => 1 },
+        content            => { optional => 1 },
+        disable            => { optional => 1 },
+        nodes              => { optional => 1 },
+        pool               => { fixed    => 0 },
+        portal             => { fixed    => 1 },
         sparse             => { optional => 1 },
-        truenas_user       => { optional => 1 },
+        target             => { fixed    => 0 },
+        truenas_apikey     => { optional => 1 },
+        truenas_apiv4_host => { optional => 1 },
         truenas_password   => { optional => 1 },
         truenas_use_ssl    => { optional => 1 },
-        truenas_apiv4_host => { optional => 1 },
-        truenas_apikey     => { optional => 1 },
+        truenas_user       => { optional => 1 },
         'zfs-base-path'    => { optional => 1 },
     };
 }
