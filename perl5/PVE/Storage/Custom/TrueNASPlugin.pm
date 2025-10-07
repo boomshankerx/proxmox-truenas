@@ -69,6 +69,7 @@ sub options {
         nodes              => { optional => 1 },
         pool               => { fixed    => 0 },
         portal             => { fixed    => 1 },
+        shared             => { fixed    => 1 },
         sparse             => { optional => 1 },
         target             => { fixed    => 0 },
         truenas_apikey     => { optional => 1 },
@@ -218,6 +219,7 @@ sub free_image {
 sub on_add_hook {
     my ( $class, $storeid, $scfg, %sensitive ) = @_;
 
+    $scfg->{shared} = 1;
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
     }
