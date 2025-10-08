@@ -651,6 +651,8 @@ sub iscsi_lun_create {
     ( my $disk = $path ) =~ s{^/dev/}{};
     ( my $name = $disk ) =~ s{^zvol/}{};
 
+    $name =~ s{[/]}{-}g;    # Replace / with - for extent names
+
     # Create extent
     my $params = { name => $name, type => 'DISK', disk => $disk, };
     my $extent = $self->request( 'iscsi.extent.create', $params );
