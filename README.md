@@ -176,6 +176,7 @@ pvesm add truenas truenas \
 --pool tank/proxmox \
 --portal 10.0.0.1 \
 --target iqn.2005-10.org.freenas.ctl:proxmox \
+--shared 1 \
 --sparse 1 \
 --truenas_apikey <APIKEY> \
 --truenas_apiv4_host 10.0.0.1 \
