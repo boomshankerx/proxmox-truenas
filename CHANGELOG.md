@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.100](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.99...v1.0.100) (2025-10-08)
+
+
+### Bug Fixes
+
+* Reintroduced replacement of / for - in extent name ([c5888ba](https://github.com/boomshankerx/proxmox-truenas/commit/c5888ba561799a06a87870dd1325fe78c64f2806))
+* Removed content option since images is the only option for this plugin ([46b79f1](https://github.com/boomshankerx/proxmox-truenas/commit/46b79f18fd376ee963f3444635ac3cdeec6c8ec4))
+
 ## [1.0.99](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.98...v1.0.99) (2025-10-07)
 
 
