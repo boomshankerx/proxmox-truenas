@@ -64,7 +64,6 @@ sub properties {
 sub options {
     return {
         blocksize          => { fixed    => 1 },
-        content            => { optional => 1 },
         disable            => { optional => 1 },
         nodes              => { optional => 1 },
         pool               => { fixed    => 0 },
@@ -219,7 +218,10 @@ sub free_image {
 sub on_add_hook {
     my ( $class, $storeid, $scfg, %sensitive ) = @_;
 
-    $scfg->{shared} = 1;
+    # Defaults
+    if ( !$scfg->{shared} ) {
+        $scfg->{shared} = 1;
+    }
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
     }
