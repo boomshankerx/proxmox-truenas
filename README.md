@@ -6,15 +6,10 @@ This plugin was made possible by the great work at <https://github.com/TheGrandW
 
 ## Donations
 
-[![Donate(https://github.com/user-attachments/assets/0b3c7274-e075-427c-9834-8da51a99a4eb)]](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
-
-[![Donate](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
-
-
-(https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
-
-
 Thank you for supporting open-source. Made with love for the community.
+
+[![Donate](https://github.com/user-attachments/assets/11a20af8-9bb0-4e42-97a3-35e753b0c8ba)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
+
 
 ## Migrating from freenas-proxmox
 
