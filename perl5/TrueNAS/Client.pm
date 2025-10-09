@@ -29,9 +29,9 @@ sub new {
         host     => $scfg->{truenas_apiv4_host} || croak("Host is required"),
         username => $scfg->{truenas_user},
         password => $scfg->{truenas_password},
-        secure   => $scfg->{truenas_use_ssl} || 0,
+        secure   => $scfg->{truenas_use_ssl} || 1,
         apikey   => $scfg->{truenas_apikey},
-        iqn      => $scfg->{target},
+        iqn      => $scfg->{target} || croak("Target is required"),
         target   => undef,
         targets  => {},
 
