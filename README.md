@@ -10,7 +10,6 @@ Thank you for supporting open-source. Made with love for the community.
 
 [![Donate](https://github.com/user-attachments/assets/11a20af8-9bb0-4e42-97a3-35e753b0c8ba)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
 
-
 ## Migrating from freenas-proxmox
 
 1. Choose a node to migrate first and log into the WebUI of that node. Open a shell console
@@ -24,8 +23,14 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Known Issues
 
-- TPM Storage:  
+### TPM Storage  
+
 Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
+
+#### Workaround (migration without snapshots)
+
+- Create an NFS/SMB share of your proxmox dataset
+- Store TPM disks on the NFS/SMB share
 
 ## APT Repository
 
