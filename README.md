@@ -13,13 +13,14 @@ Thank you for supporting open-source. Made with love for the community.
 ## Migrating from freenas-proxmox
 
 1. Choose a node to migrate first and log into the WebUI of that node. Open a shell console
-2. `apt update && apt full-upgrade`
-3. `apt purge freenas-proxmox`
-4. `apt --purge autoremove` (freenas-proxmox has installed a perl restclient).
-5. `apt reinstall pve-manager libpve-storage-perl`
-6. Install proxmox truenas APT repository
-7. Install the version of the plugin you intend to use Native or Patch. Please read compatibility carefully
-8. Repeat steps 2-7 on each node in the cluster
+2. `sed -i 's/freenas/truenas/g' /etc/pve/storage.cfg`
+3. `apt update && apt full-upgrade`
+4. `apt purge freenas-proxmox`
+5. `apt --purge autoremove` (freenas-proxmox has installed a perl restclient).
+6. `apt reinstall pve-manager libpve-storage-perl`
+7. Install proxmox truenas APT repository
+8. Install the version of the plugin you intend to use Native or Patch. Please read compatibility carefully
+9. Repeat steps 3-7 on each node in the cluster
 
 ## Known Issues
 
