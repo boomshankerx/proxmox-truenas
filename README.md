@@ -30,7 +30,7 @@ Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is
 
 #### Workaround (migration without snapshots)
 
-- Create an NFS/SMB share of your proxmox dataset
+- Create an NFS/SMB share on your proxmox dataset
 - Store TPM disks on the NFS/SMB share
 
 ## APT Repository
@@ -115,7 +115,7 @@ pvesm add <type> <storage> [OPTIONS]
 #### storage.cfg
 
 ```
-truenas: nas
+truenas: truenas
     blocksize 16k
     pool tank/proxmox
     portal 10.0.0.1
@@ -127,15 +127,14 @@ truenas: nas
     truenas_use_ssl 1
 ```
 
-# TrueNAS Patch for ZFS over iSCSI
+# TrueNAS Patch for ZFS over iSCSI (Depricated)
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
 ## Compatibility
 
 - TrueNAS 24.04 - 25.04
-- Proxmox VE 8.4.11 / 9.0.10  
-- pve-manager 8.4.11 / 9.0.10  
+- pve-manager 8.4.14 / 9.0.10  
 - libpve-storage-perl 8.3.7 / 9.0.13  
 
 TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
@@ -173,7 +172,7 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
 
 ```
-zfs: nas
+zfs: truenas
     blocksize 16k
     content images
     iscsiprovider truenas
