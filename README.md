@@ -42,21 +42,17 @@ curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
   | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
 ```
 
-Proxmox 8 / Debian 12 (bookworm)
+[sources.list](https://manpages.debian.org/sources.list)
 
 ```
-echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
-https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
-| tee /etc/apt/sources.list.d/proxmox-truenas.list
-```
-
-Proxmox 9 / Debian 13 (trixie)
-
-```
-
-echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
-https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
-| tee /etc/apt/sources.list.d/proxmox-truenas.list
+. /etc/os-release
+cat > /etc/apt/sources.list.d/proxmox-truenas.sources << EOF
+Types: deb
+URIs: https://boomshankerx.github.io/proxmox-truenas-apt
+Suites: $VERSION_CODENAME
+Components: main
+Signed-By: /etc/apt/keyrings/proxmox-truenas.gpg
+EOF
 ```
 
 # TrueNAS over iSCSI Native Storage Plugin (RC1)
