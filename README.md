@@ -130,7 +130,7 @@ truenas: truenas
 ## Compatibility
 
 - TrueNAS 24.04 - 25.04
-- pve-manager 8.4.14 / 9.0.10  
+- pve-manager 8.4.14 / 9.0.11  
 - libpve-storage-perl 8.3.7 / 9.0.13  
 
 TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
