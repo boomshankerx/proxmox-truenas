@@ -187,3 +187,7 @@ zfs: truenas
     truenas_use_ssl 1
     truenas_user <USER>
 ```
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/boomshankerx/proxmox-truenas.svg?variant=dark)](https://starchart.cc/boomshankerx/proxmox-truenas)
+
