@@ -1,6 +1,6 @@
---- pvemanagerlib.js.orig.9	2025-08-09 18:51:29.081396809 -0600
-+++ pvemanagerlib.js.9	2025-08-09 18:54:29.289672091 -0600
-@@ -9765,6 +9765,7 @@
+--- pvemanagerlib.js.9.orig	2025-10-18 15:11:19.718523806 -0600
++++ pvemanagerlib.js.9	2025-10-18 15:23:35.198297175 -0600
+@@ -9781,6 +9781,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
          ['comstar', 'Comstar'],
@@ -8,7 +8,15 @@
          ['istgt', 'istgt'],
          ['iet', 'IET'],
          ['LIO', 'LIO'],
-@@ -65026,10 +65027,31 @@
+@@ -64903,7 +64904,6 @@
+                     fields: ['total', 'used'],
+                     fieldTitles: ['Total Size', 'Used Size'],
+                     store: rrdstore,
+-                    unit: 'bytes',
+                 },
+             ],
+             listeners: {
+@@ -65162,10 +65162,31 @@
              },
          },
          changeISCSIProvider: function (f, newVal, oldVal) {
@@ -40,7 +48,7 @@
          },
      },
  
-@@ -65047,6 +65069,7 @@
+@@ -65183,6 +65204,7 @@
      },
  
      setValues: function (values) {
@@ -48,7 +56,7 @@
          values.writecache = values.nowritecache ? 0 : 1;
          this.callParent([values]);
      },
-@@ -65063,7 +65086,7 @@
+@@ -65199,7 +65221,7 @@
                  allowBlank: false,
              },
              {
@@ -57,7 +65,7 @@
                  name: 'pool',
                  value: '',
                  fieldLabel: gettext('Pool'),
-@@ -65073,11 +65096,11 @@
+@@ -65209,11 +65231,11 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'blocksize',
                  value: '4k',
@@ -71,7 +79,7 @@
                  name: 'target',
                  value: '',
                  fieldLabel: gettext('Target'),
-@@ -65088,9 +65111,108 @@
+@@ -65224,9 +65246,108 @@
                  name: 'comstar_tg',
                  value: '',
                  fieldLabel: gettext('Target group'),
@@ -178,11 +186,11 @@
 +                    }
 +                    return true;
 +                },
-+                }, 
++            }, 
          ];
  
          me.column2 = [
-@@ -65122,7 +65244,9 @@
+@@ -65258,7 +65379,9 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'comstar_hg',
                  value: '',
@@ -193,7 +201,7 @@
                  fieldLabel: gettext('Host group'),
                  allowBlank: true,
              },
-@@ -65130,9 +65254,11 @@
+@@ -65266,9 +65389,11 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'lio_tpg',
                  value: '',
