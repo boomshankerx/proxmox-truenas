@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.0.100](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.99...v1.0.100) (2025-10-08)
+
+
+### Bug Fixes
+
+* Reintroduced replacement of / for - in extent name ([c5888ba](https://github.com/boomshankerx/proxmox-truenas/commit/c5888ba561799a06a87870dd1325fe78c64f2806))
+* Removed content option since images is the only option for this plugin ([46b79f1](https://github.com/boomshankerx/proxmox-truenas/commit/46b79f18fd376ee963f3444635ac3cdeec6c8ec4))
+
+## [1.0.99](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.98...v1.0.99) (2025-10-07)
+
+
+### Bug Fixes
+
+* Added content to native plugin options ([5a6d968](https://github.com/boomshankerx/proxmox-truenas/commit/5a6d96807a1e4f4106322c04763f754c837be764))
+* Added default shared option to native plugin. ([96b5665](https://github.com/boomshankerx/proxmox-truenas/commit/96b5665885040d3fa091321bc621d8ddfb46fdd3))
+* Default storage to shared in native plugin ([eb4fec6](https://github.com/boomshankerx/proxmox-truenas/commit/eb4fec64aa1f1593dd27f029753b80ff13fc7a3b))
+
+## [1.0.98](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.97...v1.0.98) (2025-10-02)
+
+
+### Bug Fixes
+
+* Added format to plugindata ([a7a8b44](https://github.com/boomshankerx/proxmox-truenas/commit/a7a8b4431dfcb9694c047772a7a851a618f94a41))
+
+## [1.0.97](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.96...v1.0.97) (2025-09-29)
+
+
+### Bug Fixes
+
+* Renamed native plugin TrueNASPlugin.pm ([d5a57ff](https://github.com/boomshankerx/proxmox-truenas/commit/d5a57ff294d550d35dfa292330882d9d85b0e73e))
+
+## [1.0.96](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.95...v1.0.96) (2025-09-27)
+
+
+### Bug Fixes
+
+* Add sleep to prevent race condition during LUN creation ([a0a584d](https://github.com/boomshankerx/proxmox-truenas/commit/a0a584d9cde8854293e5407338b9792a1b0de343))
+* Streamline Custom plugin truenas_client_init ([83f5af9](https://github.com/boomshankerx/proxmox-truenas/commit/83f5af902ccbe7b04c46664edcfb025ed60b0980))
+
 ## [1.0.95](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.94...v1.0.95) (2025-09-23)
 
 

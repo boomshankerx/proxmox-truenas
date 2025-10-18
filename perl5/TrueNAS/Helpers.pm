@@ -15,8 +15,8 @@ use Scalar::Util qw(reftype);
 
 # Logging
 our $ADAPTER = Log::Any::Adapter->set( 'Stdout', log_level => 'info' );
-my %LOG_LEVEL    = ( debug => 1,       info => 2,      warning => 3,         error => 4 );
-my %SYSLOG_LEVEL = ( debug => 'debug', info => 'info', warn    => 'warning', error => 'err' );
+my %LOG_LEVEL    = ( debug => 1,       info => 2,      notice => 3,        warning => 4,         error => 5 );
+my %SYSLOG_LEVEL = ( debug => 'debug', info => 'info', notice => 'notice', warn    => 'warning', error => 'err' );
 
 # Logging Helper
 sub _log {

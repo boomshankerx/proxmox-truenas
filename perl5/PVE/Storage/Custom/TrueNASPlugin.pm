@@ -1,4 +1,4 @@
-package PVE::Storage::Custom::TrueNAS;
+package PVE::Storage::Custom::TrueNASPlugin;
 use base qw(PVE::Storage::ZFSPoolPlugin);
 
 use strict;
@@ -11,11 +11,11 @@ use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
-my $base           = '/dev/zvol';
-my $dev_prefix     = "/dev/";
-my $MAX_LUNS       = 255;           # Max LUNS per target  the iSCSI server
-my $truenas_client = undef;         # Pointer to entry in $truenas_server_list
-my $truenas_server_list = undef;    # API connection HashRef using the IP address of the server
+my $base                = '/dev/zvol';
+my $dev_prefix          = "/dev/";
+my $MAX_LUNS            = 255;           # Max LUNS per target  the iSCSI server
+my $truenas_client      = undef;         # Pointer to entry in $truenas_server_list
+my $truenas_server_list = undef;         # API connection HashRef using the IP address of the server
 
 # my $truenas_iscsi_global      = undef;         # Pointer to entry in $truenas_iscsi_global_list
 # my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
@@ -31,6 +31,7 @@ sub type {
 sub plugindata {
     return {
         content                => [ { images => 1 }, { images => 1 } ],
+        format                 => [ { raw    => 1 }, 'raw' ],
         'sensitive-properties' => {},
     };
 }
@@ -62,18 +63,19 @@ sub properties {
 
 sub options {
     return {
-        nodes              => { optional => 1 },
-        disable            => { optional => 1 },
-        portal             => { fixed    => 1 },
-        target             => { fixed    => 0 },
-        pool               => { fixed    => 0 },
         blocksize          => { fixed    => 1 },
+        disable            => { optional => 1 },
+        nodes              => { optional => 1 },
+        pool               => { fixed    => 0 },
+        portal             => { fixed    => 1 },
+        shared             => { optional => 1 },
         sparse             => { optional => 1 },
-        truenas_user       => { optional => 1 },
+        target             => { fixed    => 0 },
+        truenas_apikey     => { optional => 1 },
+        truenas_apiv4_host => { optional => 1 },
         truenas_password   => { optional => 1 },
         truenas_use_ssl    => { optional => 1 },
-        truenas_apiv4_host => { optional => 1 },
-        truenas_apikey     => { optional => 1 },
+        truenas_user       => { optional => 1 },
         'zfs-base-path'    => { optional => 1 },
     };
 }
@@ -216,6 +218,10 @@ sub free_image {
 sub on_add_hook {
     my ( $class, $storeid, $scfg, %sensitive ) = @_;
 
+    # Defaults
+    if ( !$scfg->{shared} ) {
+        $scfg->{shared} = 1;
+    }
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
     }

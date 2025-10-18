@@ -29,9 +29,9 @@ sub new {
         host     => $scfg->{truenas_apiv4_host} || croak("Host is required"),
         username => $scfg->{truenas_user},
         password => $scfg->{truenas_password},
-        secure   => $scfg->{truenas_use_ssl} || 0,
+        secure   => $scfg->{truenas_use_ssl} || 1,
         apikey   => $scfg->{truenas_apikey},
-        iqn      => $scfg->{target},
+        iqn      => $scfg->{target} || croak("Target is required"),
         target   => undef,
         targets  => {},
 
@@ -626,8 +626,8 @@ sub iscsi_lun_get {
         return;
     }
 
-    $extent->{lunid}  = $targetextent->{lunid};
-    $extent->{target} = $target_id;
+    $extent->{lunid}        = $targetextent->{lunid};
+    $extent->{target}       = $target_id;
     $extent->{targetextent} = $targetextent->{id};
 
     return $extent;
@@ -650,6 +650,8 @@ sub iscsi_lun_create {
 
     ( my $disk = $path ) =~ s{^/dev/}{};
     ( my $name = $disk ) =~ s{^zvol/}{};
+
+    $name =~ s{[/]}{-}g;    # Replace / with - for extent names
 
     # Create extent
     my $params = { name => $name, type => 'DISK', disk => $disk, };
@@ -685,8 +687,8 @@ sub iscsi_lun_delete {
         return;
     }
     my $target_id = $self->iscsi_target_getid( $self->{target} );
-    my $result = $self->request( 'iscsi.targetextent.delete', $lun->{targetextent}, \1 ); #Force delete
-    $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );    # Force delete
+    my $result    = $self->request( 'iscsi.targetextent.delete', $lun->{targetextent}, \1 );    # Force delete
+    $result = $self->request( 'iscsi.extent.delete', $lun->{id}, \0, \1 );                      # Force delete
     if ( $self->has_error ) {
         _log( "Failed to delete LUN", 'error' );
         return;

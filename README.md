@@ -1,4 +1,4 @@
-# TrueNAS over iSCSI Custom Storage Plugin for Proxmox
+# TrueNAS over iSCSI
 
 ## Acknowledgement
 
@@ -6,96 +6,155 @@ This plugin was made possible by the great work at <https://github.com/TheGrandW
 
 ## Donations
 
-[![Donate](https://img.shields.io/badge/PayPal-Donate-00457C?logo=paypal&logoColor=white)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
-
 Thank you for supporting open-source. Made with love for the community.
 
-## Compatibility
-
-Proxmox VE 8.4.11 / 9.0.6  
-pve-manager 8.4.11 / 9.0.6  
-libpve-storage-perl 8.3.7 / 9.0.13  
+[![Donate](https://github.com/user-attachments/assets/11a20af8-9bb0-4e42-97a3-35e753b0c8ba)](https://www.paypal.com/donate?hosted_button_id=QZD95HR69R8KA)
 
 ## Migrating from freenas-proxmox
 
-1. **Uninstall the old freenas-proxmox plugin if you have it installed. `storage.cfg` settings are not compatible between plugins. You can either remove and recreate your connection or edit storage.cfg replacing 'freenas' with 'truenas'
-3. Update your proxmox system to the latest version
-4. Ensure you have the latest versions of the relevant files `apt reinstall pve-manager libpve-storage-perl`. Uninstalling the plugin restores the files that existed at the time of the last install, which may not be current.
-5. Proceed to install
+1. Choose a node to migrate first and log into the WebUI of that node. Open a shell console
+2. `sed -i 's/freenas/truenas/g' /etc/pve/storage.cfg`
+3. `apt update && apt full-upgrade`
+4. `apt purge freenas-proxmox`
+5. `apt --purge autoremove` (freenas-proxmox has installed a perl restclient).
+6. `apt reinstall pve-manager libpve-storage-perl`
+7. Install proxmox truenas APT repository
+8. Install the version of the plugin you intend to use Native or Patch. Please read compatibility carefully
+9. Repeat steps 3-7 on each node in the cluster
 
-## Install
+## Known Issues
 
-### APT Repository (Recommended)
+### TPM Storage  
 
-1. Import the signing key
+Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
+
+#### Workaround (migration without snapshots)
+
+- Create an NFS/SMB share on your proxmox dataset
+- Store TPM disks on the NFS/SMB share
+
+## APT Repository
+
+GPG Key
 
 ```
 curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
   | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
 ```
 
-2. Add the repository
-
-Proxmox 8 / Debian 12 (bookworm):
+[Repository](https://manpages.debian.org/sources.list)
 
 ```
-echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
-https://boomshankerx.github.io/proxmox-truenas-apt bookworm main" \
-| tee /etc/apt/sources.list.d/proxmox-truenas.list
+. /etc/os-release
+cat > /etc/apt/sources.list.d/proxmox-truenas.sources << EOF
+Types: deb
+URIs: https://boomshankerx.github.io/proxmox-truenas-apt
+Suites: $VERSION_CODENAME
+Components: main
+Signed-By: /etc/apt/keyrings/proxmox-truenas.gpg
+EOF
 ```
 
-Proxmox 9 / Debian 13 (trixie):
+# TrueNAS over iSCSI Native Storage Plugin (RC1)
+
+**BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
+
+## Compatibility
+
+- TrueNAS 25.10+  
+- Proxmox VE 8/9
+
+TrueNAS 25.10 has implmented API functionality that supports complete managment of iSCSI disk storage. TrueNAS 25.10 has reached RC1 status
+
+There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the UI in version 9.1. Until then the plugin can be configured in storage.cfg.
+
+## Installation
 
 ```
-echo "deb [signed-by=/etc/apt/keyrings/proxmox-truenas.gpg] \
-https://boomshankerx.github.io/proxmox-truenas-apt trixie main" \
-| tee /etc/apt/sources.list.d/proxmox-truenas.list
+apt update
+apt install proxmox-truenas-native
 ```
 
-3. Update & install
+## Configuration
+
+### TrueNAS
+
+<https://github.com/boomshankerx/proxmox-truenas/wiki/Configuration-Guide>
+
+### Proxmox
+
+#### pvesm
+
+```
+pvesm add truenas truenas \
+--blocksize 16k \
+--pool tank/proxmox \
+--portal 10.0.0.1 \
+--target iqn.2005-10.org.freenas.ctl:proxmox \
+--shared 1 \
+--sparse 1 \
+--truenas_apikey <APIKEY> \
+--truenas_apiv4_host 10.0.0.1 \
+--truenas_use_ssl 1
+```
+
+#### Known Bug
+
+The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
+
+```
+400 Result verification failed
+config: type check ('object') failed
+pvesm add <type> <storage> [OPTIONS]
+```
+
+#### storage.cfg
+
+```
+truenas: truenas
+    blocksize 16k
+    pool tank/proxmox
+    portal 10.0.0.1
+    shared 1
+    sparse 1
+    target iqn.2005-10.org.freenas.ctl:proxmox
+    truenas_apikey <APIKEY>
+    truenas_apiv4_host 10.0.0.1
+    truenas_use_ssl 1
+```
+
+# TrueNAS Patch for ZFS over iSCSI (Depricated)
+
+**BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
+
+## Compatibility
+
+- TrueNAS 24.04 - 25.04
+- pve-manager 8.4.14 / 9.0.10  
+- libpve-storage-perl 8.3.7 / 9.0.13  
+
+TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
+See: <https://github.com/boomshankerx/proxmox-truenas/issues/56#issuecomment-3315936158>
+
+## Installation
 
 ```
 apt update
 apt install proxmox-truenas
 ```
 
-## Manual Installation
+## Configuration
 
-1. Download the latest release of the .deb file to your Proxmox host
-2. Install the .deb package using `apt install <deb>`
-3. Create ZFS over iSCSI connection
-
-### Dependencies
-
-If you want to install dependencies manually
-
-```
-apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
-```
-
-## Example config
-
-```
-zfs: nas
-    blocksize 16k
-    iscsiprovider truenas
-    pool tank/proxmox
-    portal 10.0.0.1
-    target iqn.2005-10.org.freenas.ctl:proxmox
-    content images
-    nowritecache 0
-    sparse 1
-    truenas_apikey <APIKEY>
-    truenas_apiv4_host 10.0.0.1
-    truenas_use_ssl 1
-    truenas_user <USER>
-    truenas_password <PASSWORD>
-```
+### TrueNAS iSCSI
 
 This plugin requires that TrueNAS iSCSI is properly configured prior to connecting
-<https://www.truenas.com/docs/scale/25.04/scaleuireference/shares/iscsisharesscreens/>
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/shares/iscsi/addingiscsishares/#iscsi-manual-setup>
 
-### NOTE: Please be aware that this plugin uses the TrueNAS APIs but still uses SSH keys
+### TrueNAS API Key
+
+<https://www.truenas.com/docs/scale/25.10/scaletutorials/toptoolbar/managingapikeys/>
+
+### SSH Key
 
 You will still need to configure the SSH connector for listing the ZFS Pools because this is currently being done in a Proxmox module (ZFSPoolPlugin.pm). To configure this please follow the steps at <https://pve.proxmox.com/wiki/Storage:_ZFS_over_iSCSI> that have to do with SSH between Proxmox VE and TrueNAS. The code segment should start out `mkdir /etc/pve/priv/zfs`.
 
@@ -104,34 +163,27 @@ You will still need to configure the SSH connector for listing the ZFS Pools bec
 3. Add your new TrueNAS ZFS-over-iSCSI storage using the TrueNAS-API.
 4. Thanks for your support.
 
-# ** **BETA** ** Custom Storage Plugin with full API support for TrueNAS 25.10  
+### Example Config (/etc/pve/storage.cfg)
 
-Included in this repo is a beta version of a Custom Storage Plugin that uses the newly improved API support in TrueNAS 25.10 which is currently in early stages of testing.
-
-**BOTH PLUGINS CANNOT BE INSTALLED AT THE SAME TIME**
-
-## Installation
-
-```
-apt install libio-socket-ip-perl libio-socket-ssl-perl libjson-rpc-common-perl liblog-any-perl libprotocol-websocket-perl
-```
-
-```
-./deploy.sh
-```
-
-## Example config
 Choose: truenas_apikey (Preferred)  OR  truenas_user + truenas_password
+
 ```
-truenas: nas
+zfs: truenas
     blocksize 16k
+    content images
+    iscsiprovider truenas
+    nowritecache 0
     pool tank/proxmox
     portal 10.0.0.1
-    target iqn.2005-10.org.freenas.ctl:proxmox
     sparse 1
+    target iqn.2005-10.org.freenas.ctl:proxmox
     truenas_apikey <APIKEY>
     truenas_apiv4_host 10.0.0.1
+    truenas_password <PASSWORD>
     truenas_use_ssl 1
     truenas_user <USER>
-    truenas_password <PASSWORD>
 ```
+
+## Stargazers over time
+[![Stargazers over time](https://starchart.cc/boomshankerx/proxmox-truenas.svg?variant=dark)](https://starchart.cc/boomshankerx/proxmox-truenas)
+
