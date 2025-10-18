@@ -1185,7 +1185,7 @@ Ext.define('PVE.Parser', {
                     return undefined; // continue
                 }
 
-                let match = p.match(/^([a-z_]+)=(\S+)$/);
+                let match = p.match(/^([a-z_-]+)=(\S+)$/);
                 if (!match || Ext.isDefined(res[match[1]])) {
                     errors = true;
                     return false; // break
@@ -2591,8 +2591,7 @@ Ext.define('PVE.Utils', {
                 return -1;
             }
 
-            var index = PVE.data.ResourceStore.findExact('id', 'node/' + data.node);
-            var node = PVE.data.ResourceStore.getAt(index);
+            let node = PVE.data.ResourceStore.getNodeById(data.node);
             if (!Ext.isDefined(node) || node === null) {
                 return -1;
             }
@@ -2614,8 +2613,7 @@ Ext.define('PVE.Utils', {
                 return '';
             }
 
-            var index = PVE.data.ResourceStore.findExact('id', 'node/' + record.data.node);
-            var node = PVE.data.ResourceStore.getAt(index);
+            let node = PVE.data.ResourceStore.getNodeById(record.data.node);
             if (!Ext.isDefined(node) || node === null) {
                 return '';
             }
@@ -2669,8 +2667,7 @@ Ext.define('PVE.Utils', {
                 return -1;
             }
 
-            var index = PVE.data.ResourceStore.findExact('id', 'node/' + data.node);
-            var node = PVE.data.ResourceStore.getAt(index);
+            let node = PVE.data.ResourceStore.getNodeById(data.node);
 
             if (!Ext.isDefined(node) || node === null) {
                 return -1;
@@ -2720,8 +2717,7 @@ Ext.define('PVE.Utils', {
                 return '';
             }
 
-            var index = PVE.data.ResourceStore.findExact('id', 'node/' + record.data.node);
-            var node = PVE.data.ResourceStore.getAt(index);
+            let node = PVE.data.ResourceStore.getNodeById(record.data.node);
             var maxmem = node.data.maxmem || 0;
 
             if (record.data.mem > 1) {
@@ -4230,6 +4226,8 @@ Ext.define('PVE.data.ResourceStore', {
     extend: 'Proxmox.data.UpdateStore',
     singleton: true,
 
+    nodeCache: {},
+
     findVMID: function (vmid) {
         let me = this;
         return me.findExact('vmid', parseInt(vmid, 10)) >= 0;
@@ -4247,6 +4245,22 @@ Ext.define('PVE.data.ResourceStore', {
         });
 
         return nodes;
+    },
+
+    getNodeById: function (id) {
+        let me = this;
+
+        if (!me.nodeCache[id]) {
+            let idx = me.findExact('id', `node/${id}`);
+            me.nodeCache[id] = me.getAt(idx);
+        }
+
+        return me.nodeCache[id];
+    },
+
+    clearCache: function () {
+        let me = this;
+        me.nodeCache = {};
     },
 
     storageIsShared: function (storage_path) {
@@ -4600,6 +4614,8 @@ Ext.define('PVE.data.ResourceStore', {
         });
 
         me.callParent([config]);
+
+        me.on('beforeload', me.clearCache, me);
     },
 });
 Ext.define('pve-rrd-node', {
@@ -13133,8 +13149,10 @@ Ext.define(
 Ext.define('PVE.pool.AddVM', {
     extend: 'Proxmox.window.Edit',
 
-    width: 640,
-    height: 480,
+    width: 800,
+    height: 600,
+    resizable: true,
+
     isAdd: true,
     isCreate: true,
 
@@ -13159,6 +13177,9 @@ Ext.define('PVE.pool.AddVM', {
             allowBlank: false,
         });
 
+        let basicFilter = (data) =>
+            (data.type === 'lxc' || data.type === 'qemu') && data.pool !== me.pool;
+
         var vmStore = Ext.create('Ext.data.Store', {
             model: 'PVEResources',
             sorters: [
@@ -13167,20 +13188,13 @@ Ext.define('PVE.pool.AddVM', {
                     direction: 'ASC',
                 },
             ],
-            filters: [
-                function (item) {
-                    return (
-                        (item.data.type === 'lxc' || item.data.type === 'qemu') &&
-                        item.data.pool !== me.pool
-                    );
-                },
-            ],
+            filters: [(item) => basicFilter(item.data)],
         });
 
         var vmGrid = Ext.create('widget.grid', {
             store: vmStore,
             border: true,
-            height: 360,
+            height: 480,
             scrollable: true,
             selModel: {
                 selType: 'checkboxmodel',
@@ -13195,6 +13209,62 @@ Ext.define('PVE.pool.AddVM', {
                     },
                 },
             },
+            tbar: [
+                '->',
+                gettext('Filter') + ':',
+                ' ',
+                {
+                    xtype: 'textfield',
+                    width: 200,
+                    enableKeyEvents: true,
+                    emptyText: gettext('Name, Node, VMID'),
+                    submitValue: false,
+                    listeners: {
+                        keyup: {
+                            buffer: 350,
+                            fn: function (field) {
+                                let needle = field.getValue().toLocaleLowerCase();
+                                if (needle?.length === 0) {
+                                    this.triggers.clear.setVisible(false);
+                                }
+                                let matchesNeedle = (v) => v?.toLocaleLowerCase().includes(needle);
+                                vmStore.clearFilter(true);
+                                vmStore.filter([
+                                    {
+                                        filterFn: ({ data }) =>
+                                            basicFilter(data) &&
+                                            (matchesNeedle(data.vmid.toString()) ||
+                                                matchesNeedle(data.name) ||
+                                                matchesNeedle(data.node)),
+                                    },
+                                ]);
+                            },
+                        },
+                        change: function (field, newValue, oldValue) {
+                            if (newValue !== this.originalValue) {
+                                this.triggers.clear.setVisible(true);
+                            }
+                        },
+                    },
+                    triggers: {
+                        clear: {
+                            cls: 'pmx-clear-trigger',
+                            weight: -1,
+                            hidden: true,
+                            handler: function () {
+                                this.triggers.clear.setVisible(false);
+                                this.setValue(this.originalValue);
+                                vmStore.clearFilter(true);
+                                vmStore.filter([
+                                    {
+                                        filterFn: ({ data }) => basicFilter(data),
+                                    },
+                                ]);
+                            },
+                        },
+                    },
+                },
+            ],
             columns: [
                 {
                     header: 'ID',
@@ -13320,8 +13390,8 @@ Ext.define('PVE.grid.PoolMembers', {
             (c) => c.dataIndex !== 'tags' && c.dataIndex !== 'lock',
         );
 
-        var reload = function () {
-            store.load();
+        const reload = function () {
+            me.rstore.load();
         };
 
         var sm = Ext.create('Ext.selection.RowModel', {});
@@ -13375,7 +13445,7 @@ Ext.define('PVE.grid.PoolMembers', {
                         items: [
                             {
                                 text: gettext('Virtual Machine'),
-                                iconCls: 'pve-itype-icon-qemu',
+                                iconCls: 'fa fa-desktop',
                                 handler: function () {
                                     var win = Ext.create('PVE.pool.AddVM', { pool: me.pool });
                                     win.on('destroy', reload);
@@ -13384,7 +13454,7 @@ Ext.define('PVE.grid.PoolMembers', {
                             },
                             {
                                 text: gettext('Storage'),
-                                iconCls: 'pve-itype-icon-storage',
+                                iconCls: 'fa fa-hdd-o',
                                 handler: function () {
                                     var win = Ext.create('PVE.pool.AddStorage', { pool: me.pool });
                                     win.on('destroy', reload);
@@ -15821,6 +15891,8 @@ Ext.define('PVE.panel.GuestStatusView', {
             title: gettext('Memory usage'),
             valueField: 'mem',
             maxField: 'maxmem',
+            warningThreshold: 0.9,
+            criticalThreshold: 0.975,
         },
         {
             itemId: 'memory-host',
@@ -16541,7 +16613,6 @@ Ext.define('PVE.tree.ResourceTree', {
                 text: gettext('Virtual Machine'),
             },
             lxc: {
-                //iconCls: 'x-tree-node-lxc',
                 iconCls: 'fa fa-cube',
                 text: gettext('LXC Container'),
             },
@@ -16803,7 +16874,11 @@ Ext.define('PVE.tree.ResourceTree', {
         let stateid = 'rid';
 
         const changedFields = [
-            'text',
+            'disk',
+            'maxdisk',
+            'vmid',
+            'name',
+            'type',
             'running',
             'template',
             'status',
@@ -16840,10 +16915,22 @@ Ext.define('PVE.tree.ResourceTree', {
             return node;
         };
 
+        let firstUpdate = true;
+
         let updateTree = function () {
             store.suspendEvents();
 
-            let rootnode = me.store.getRootNode();
+            let rootnode;
+            if (firstUpdate) {
+                rootnode = Ext.create('PVETree', {
+                    expanded: true,
+                    id: 'root',
+                    text: gettext('Datacenter'),
+                    iconCls: 'fa fa-server',
+                });
+            } else {
+                rootnode = me.store.getRootNode();
+            }
             // remember selected node (and all parents)
             let sm = me.getSelectionModel();
             let lastsel = sm.getSelection()[0];
@@ -16961,6 +17048,11 @@ Ext.define('PVE.tree.ResourceTree', {
                 me.selectById(lastsel.data.id);
             } else if (lastsel && reselect) {
                 me.selectById(lastsel.data.id);
+            }
+
+            if (firstUpdate) {
+                me.store.setRoot(rootnode);
+                firstUpdate = false;
             }
 
             // on first tree load set the selection from the stateful provider
@@ -22192,7 +22284,7 @@ Ext.define('PVE.window.Snapshot', {
                 me.vmid,
                 me.vmname,
             );
-            subject = `${guestTypeStr} ${formattedGuestIdentifier} ${gettext('Snapshot')}}`;
+            subject = `${guestTypeStr} ${formattedGuestIdentifier} ${gettext('Snapshot')}`;
             me.method = 'POST';
             me.showTaskViewer = true;
         } else {
@@ -26089,7 +26181,13 @@ Ext.define('PVE.ha.RuleInputPanel', {
             values.rule = 'ha-rule-' + Ext.data.identifier.Uuid.Global.generate().slice(0, 13);
         }
 
-        values.disable = values.enable ? 0 : 1;
+        if (values.enable) {
+            if (!me.isCreate) {
+                Proxmox.Utils.assemble_field_data(values, { delete: 'disable' });
+            }
+        } else {
+            values.disable = 1;
+        }
         delete values.enable;
 
         values.resources = me.formatResourceListString(values.resources);
@@ -26354,7 +26452,7 @@ Ext.define('PVE.ha.RulesBaseView', {
                     handler: () => createRuleEditWindow(),
                 },
                 {
-                    xtype: 'button',
+                    xtype: 'proxmoxButton',
                     text: gettext('Edit'),
                     disabled: true,
                     selModel: sm,
@@ -31695,6 +31793,8 @@ Ext.define(
                 xtype: 'widgetcolumn',
                 widget: {
                     xtype: 'pveProgressBar',
+                    warningThreshold: 0.9,
+                    criticalThreshold: 0.975,
                 },
             },
             {
@@ -31741,6 +31841,9 @@ Ext.define('PVE.widget.ProgressBar', {
     animate: true,
     textTpl: ['{percent}%'],
 
+    warningThreshold: 0.8,
+    criticalThreshold: 0.9,
+
     setValue: function (value) {
         let me = this;
 
@@ -31748,9 +31851,9 @@ Ext.define('PVE.widget.ProgressBar', {
 
         me.removeCls(['warning', 'critical']);
 
-        if (value > 0.89) {
+        if (value >= me.criticalThreshold) {
             me.addCls('critical');
-        } else if (value > 0.75) {
+        } else if (value >= me.warningThreshold) {
             me.addCls('warning');
         }
     },
@@ -33349,6 +33452,8 @@ Ext.define('PVE.dc.Summary', {
                 {
                     title: gettext('Memory'),
                     itemId: 'memory',
+                    warningThreshold: 0.9,
+                    criticalThreshold: 0.975,
                 },
                 {
                     title: gettext('Storage'),
@@ -34012,19 +34117,23 @@ Ext.define('PVE.dc.Tasks', {
                     header: gettext('End Time'),
                     dataIndex: 'endtime',
                     width: 150,
+                    align: 'inherit',
                     renderer: function (value, metaData, record) {
+                        metaData.tdStyle = 'text-align: left;';
                         if (record.data.pid) {
                             if (
                                 record.data.type === 'vncproxy' ||
                                 record.data.type === 'vncshell' ||
                                 record.data.type === 'spiceproxy'
                             ) {
-                                metaData.tdCls = 'x-grid-row-console';
+                                metaData.tdStyle = 'text-align: center;';
+                                return '<i class="fa fa-desktop"></i>';
                             } else {
                                 metaData.tdCls = 'x-grid-row-loading';
                             }
                             return '';
                         }
+
                         return Ext.Date.format(value, 'M d H:i:s');
                     },
                 },
@@ -39600,7 +39709,7 @@ Ext.define('PVE.lxc.RessourceView', {
             rows[confid] = {
                 group: group,
                 order: i,
-                tdCls: 'pve-itype-icon-storage',
+                iconCls: 'hdd-o',
                 editor: mpeditor,
                 header: header,
                 renderer: Ext.htmlEncode,
@@ -40274,6 +40383,10 @@ Ext.define('PVE.ceph.CephInstallWizard', {
                         : gettext(
                               'The no-subscription repository is not the best choice for production setups.',
                           );
+                } else if (repo === 'manual') {
+                    return gettext(
+                        'The manual repository option expects that the repository is already configured. For example, in combination with the Promox Offline Mirror.',
+                    );
                 } else {
                     return gettext(
                         'The test repository should only be used for test setups or after consulting the official Proxmox support!',
@@ -40444,6 +40557,7 @@ Ext.define('PVE.ceph.CephInstallWizard', {
                                 ['enterprise', gettext('Enterprise (recommended)')],
                                 ['no-subscription', gettext('No-Subscription')],
                                 ['test', gettext('Test')],
+                                ['manual', gettext('Manual')],
                             ],
                             labelWidth: 150,
                             submitValue: false,
@@ -47654,6 +47768,9 @@ Ext.define('PVE.node.StatusView', {
             title: gettext('RAM usage'),
             valueField: 'memory',
             maxField: 'memory',
+            warningThreshold: 0.9,
+            criticalThreshold: 0.975,
+            // TODO: split out ARC usage
             renderer: Proxmox.Utils.render_node_size_usage,
         },
         {
@@ -47661,9 +47778,7 @@ Ext.define('PVE.node.StatusView', {
             printBar: false,
             title: gettext('KSM sharing'),
             textField: 'ksm',
-            renderer: function (record) {
-                return Proxmox.Utils.render_size(record.shared);
-            },
+            renderer: (record) => Proxmox.Utils.render_size(record.shared),
             padding: '0 10 10 10',
         },
         {
@@ -50180,6 +50295,13 @@ Ext.define('PVE.qemu.CmdMenu', {
                 disabled: stopped,
                 tooltip: Ext.String.format(gettext('Reboot {0}'), 'VM'),
                 handler: () => confirmedVMCommand('reboot'),
+            },
+            {
+                text: gettext('Reset'),
+                iconCls: 'fa fa-fw fa-bolt',
+                disabled: stopped,
+                tooltip: Ext.String.format(gettext('Reset {0}'), 'VM'),
+                handler: () => confirmedVMCommand('reset'),
             },
             {
                 xtype: 'menuseparator',
@@ -59203,6 +59325,7 @@ Ext.define('PVE.sdn.controllers.EvpnInputPanel', {
                 displayField: 'iface',
                 fieldLabel: 'SDN Fabric',
                 allowBlank: true,
+                deleteEmpty: true,
                 skipEmptyText: true,
                 autoSelect: false,
                 emptyText: gettext('used as underlay network'),
@@ -60419,6 +60542,7 @@ Ext.define('PVE.sdn.zones.VxlanInputPanel', {
                 fieldLabel: 'SDN Fabric',
                 skipEmptyText: true,
                 allowBlank: true,
+                deleteEmpty: true,
                 autoSelect: false,
                 emptyText: gettext('used as underlay network'),
                 nodename: 'localhost',
@@ -64779,6 +64903,7 @@ Ext.define('PVE.storage.Summary', {
                     fields: ['total', 'used'],
                     fieldTitles: ['Total Size', 'Used Size'],
                     store: rrdstore,
+                    unit: 'bytes',
                 },
             ],
             listeners: {
