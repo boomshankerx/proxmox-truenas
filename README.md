@@ -42,7 +42,7 @@ curl -fsSL https://boomshankerx.github.io/proxmox-truenas-apt/gpg.key \
   | gpg --dearmor -o /etc/apt/keyrings/proxmox-truenas.gpg
 ```
 
-[sources.list](https://manpages.debian.org/sources.list)
+[Repository](https://manpages.debian.org/sources.list)
 
 ```
 . /etc/os-release
