@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.101](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.100...v1.0.101) (2025-10-18)
+
+
+### Bug Fixes
+
+* Added target validation and default to secure connection ([36c7a76](https://github.com/boomshankerx/proxmox-truenas/commit/36c7a766d26e3c8a58a8548ed3b09e686e4f5563))
+
 ## [1.0.100](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.99...v1.0.100) (2025-10-08)
 
 
