@@ -46,6 +46,7 @@ sub new {
         sock        => undef,
         timeout     => 60,
         lastcall    => undef,
+        version     => undef,
 
         # Message Handling
         msg_id => 0,
@@ -505,7 +506,7 @@ sub _message_sanatize {
     return @params;
 }
 
-# EVENTS
+# --- EVENTS ---
 
 sub on_error {
     my ( $self, $error ) = @_;
@@ -524,7 +525,7 @@ sub on_error {
 
 }
 
-# PROPERTIES
+# --- PROPERTIES ---
 
 sub response {
     my ($self) = @_;
@@ -551,7 +552,7 @@ sub has_error {
     return defined( $self->{error} );
 }
 
-## ISCSI METHODS
+# --- ISCSI ---
 
 sub iscsi_global_config {
     my ($self) = @_;
@@ -610,7 +611,7 @@ sub iscsi_lun_get {
 
     my $target_id = $self->iscsi_target_getid($target_name);
 
-    $query   = _build_query( { path => $path } );
+    $query   = _build_query( { disk => $path } );
     $options = { get => \1 };
     my $extent = $self->request( 'iscsi.extent.query', $query, $options );
     if ( !$extent ) {
@@ -648,13 +649,12 @@ sub iscsi_lun_create {
         return;
     }
 
-    ( my $disk = $path ) =~ s{^/dev/}{};
-    ( my $name = $disk ) =~ s{^zvol/}{};
+    ( my $name = $path ) =~ s{^zvol/}{};
 
     $name =~ s{[/]}{-}g;    # Replace / with - for extent names
 
     # Create extent
-    my $params = { name => $name, type => 'DISK', disk => $disk, };
+    my $params = { name => $name, type => 'DISK', disk => $path, };
     my $extent = $self->request( 'iscsi.extent.create', $params );
     if ( $self->has_error ) {
         _log( "Failed to create LUN", 'error' );
@@ -678,8 +678,6 @@ sub iscsi_lun_delete {
     my ( $self, $path ) = @_;
 
     _log( $path, 'debug' );
-
-    $path =~ s{/dev/}{};
 
     my $lun = $self->iscsi_lun_get( $path, $self->{target} );
     if ( !$lun ) {
@@ -726,12 +724,11 @@ sub iscsi_lun_nextid {
 sub iscsi_lun_recreate {
     my ( $self, $path ) = @_;
 
-    ( my $lun_path = $path ) =~ s{/dev/}{};
-
-    $self->iscsi_lun_delete($lun_path);
+    $self->iscsi_lun_delete($path);
     $self->iscsi_lun_create($path);
-
 }
+
+# --- ZFS ---
 
 sub zfs_snapshot_create {
     my ( $self, $snapshot ) = @_;
@@ -935,6 +932,21 @@ sub zfs_zpool_get {
     _log( "Queried zpool: $pool", "debug" );
 
     return $result;
+}
+
+# --- HELPERS ---
+
+sub truenas_parse_version {
+    my ($version) = @_;
+
+    if ( defined $version ) {
+        if ( my $parsed =~ /^TrueNAS(?:-Scale)?-((\d+)\.(\d+))/ ) {
+            my ($ver, $major, $minor) = ($1, $2, $3);
+            return ($ver, $major, $minor);
+        }
+    }
+
+    return undef;
 }
 
 1;

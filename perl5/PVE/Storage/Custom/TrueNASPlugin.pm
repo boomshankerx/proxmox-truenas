@@ -11,8 +11,7 @@ use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
-my $base                = '/dev/zvol';
-my $dev_prefix          = "/dev/";
+my $base                = 'zvol';
 my $MAX_LUNS            = 255;           # Max LUNS per target  the iSCSI server
 my $truenas_client      = undef;         # Pointer to entry in $truenas_server_list
 my $truenas_server_list = undef;         # API connection HashRef using the IP address of the server
@@ -101,6 +100,7 @@ sub truenas_client_init {
         if ( !$result ) {
             die "Unable to connect to the TrueNAS API service at '" . $truenas_client->{uri} . "'\n";
         }
+        $truenas_client->{version} = $result;
         _log( "Version: " . $result );
 
     }
@@ -118,6 +118,7 @@ sub truenas_client_init {
 
     return;
 }
+
 
 # --- Storage implementation --------------------------------------------------------------
 
