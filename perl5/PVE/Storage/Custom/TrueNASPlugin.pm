@@ -206,8 +206,8 @@ sub free_image {
     for ( my $i = 1 ; $i <= 5 ; $i++ ) {
         my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
         last if $result;
-        _log( "Retrying zvol delete in " . ( $i * 5 ) . " seconds", 'info' );
-        sleep( $i * 5 );
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
     }
     return undef;
 }
