@@ -21,7 +21,7 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 # my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
 
 sub api {
-    return 12;
+    return 11;
 }
 
 sub type {
