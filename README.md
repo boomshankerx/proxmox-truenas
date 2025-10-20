@@ -24,6 +24,22 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Known Issues
 
+### pvesm error
+
+The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
+```
+400 Result verification failed
+config: type check ('object') failed
+pvesm add <type> <storage> [OPTIONS]
+```
+
+### API version warning
+
+In order to support Proxmox VE 8.4 the storage API version has to be set at 11
+```
+Plugin "PVE::Storage::Custom::TrueNASPlugin" is implementing an older storage API, an upgrade is recommended
+```
+
 ### TPM Storage  
 
 Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
