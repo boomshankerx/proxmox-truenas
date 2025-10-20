@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.103](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.102...v1.0.103) (2025-10-20)
+
+
+### Bug Fixes
+
+* Changed delete zvol retry wait time to 1 second ([bbe0a56](https://github.com/boomshankerx/proxmox-truenas/commit/bbe0a56118a39e6f1f80b638e84e1b81ac2e8da2))
+* Changed the wrong log message for querying zpool. fixed. ([5ab6d73](https://github.com/boomshankerx/proxmox-truenas/commit/5ab6d73a7ecbb0d79b532a489dbabc8767922809))
+
 ## [1.0.102](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.101...v1.0.102) (2025-10-20)
 
 
