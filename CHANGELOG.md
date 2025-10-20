@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.104](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.103...v1.0.104) (2025-10-20)
+
+
+### Bug Fixes
+
+* Add version handling and improve iSCSI LUN management in TrueNAS client ([d77aafc](https://github.com/boomshankerx/proxmox-truenas/commit/d77aafc932dd0c3d68afff058732f6db8b78dd11))
+
 ## [1.0.103](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.102...v1.0.103) (2025-10-20)
 
 
