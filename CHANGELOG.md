@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.102](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.101...v1.0.102) (2025-10-20)
+
+
+### Bug Fixes
+
+* Made logging for zvol list query debug only. ([c1d4a1f](https://github.com/boomshankerx/proxmox-truenas/commit/c1d4a1f923fac63191b679537c8ee64e7975aec8))
+* Reduced APIVER to 11 to support proxmox 8.4 ([5509f42](https://github.com/boomshankerx/proxmox-truenas/commit/5509f423ae733a64a2f65db548725b7f3edce042))
+
 ## [1.0.101](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.100...v1.0.101) (2025-10-18)
 
 
