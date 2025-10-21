@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.105](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.104...v1.0.105) (2025-10-21)
+
+
+### Bug Fixes
+
+* Return dynamic APIVER based on proxmox 8/9 ([53c2a6e](https://github.com/boomshankerx/proxmox-truenas/commit/53c2a6ea6fa1bd436b583bffed401fbe8a9f3bed))
+
 ## [1.0.104](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.103...v1.0.104) (2025-10-20)
 
 
