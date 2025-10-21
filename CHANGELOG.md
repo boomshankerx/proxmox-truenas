@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.106](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.105...v1.0.106) (2025-10-21)
+
+
+### Bug Fixes
+
+* Revert changes to base path. Caused issues with patch version. ([0c28170](https://github.com/boomshankerx/proxmox-truenas/commit/0c2817043e0992e095aab5d1d4039b8b2c2a6724))
+
 ## [1.0.105](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.104...v1.0.105) (2025-10-21)
 
 
