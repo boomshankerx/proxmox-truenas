@@ -33,13 +33,6 @@ config: type check ('object') failed
 pvesm add <type> <storage> [OPTIONS]
 ```
 
-### API version warning
-
-In order to support Proxmox VE 8.4 the storage API version has to be set at 11
-```
-Plugin "PVE::Storage::Custom::TrueNASPlugin" is implementing an older storage API, an upgrade is recommended
-```
-
 ### TPM Storage  
 
 Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
