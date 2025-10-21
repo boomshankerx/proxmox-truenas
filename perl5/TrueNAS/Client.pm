@@ -649,12 +649,13 @@ sub iscsi_lun_create {
         return;
     }
 
-    ( my $name = $path ) =~ s{^zvol/}{};
+    ( my $disk = $path ) =~ s{^/dev/}{};
+    ( my $name = $disk ) =~ s{^zvol/}{};
 
     $name =~ s{[/]}{-}g;    # Replace / with - for extent names
 
     # Create extent
-    my $params = { name => $name, type => 'DISK', disk => $path, };
+    my $params = { name => $name, type => 'DISK', disk => $disk, };
     my $extent = $self->request( 'iscsi.extent.create', $params );
     if ( $self->has_error ) {
         _log( "Failed to create LUN", 'error' );
@@ -678,6 +679,8 @@ sub iscsi_lun_delete {
     my ( $self, $path ) = @_;
 
     _log( $path, 'debug' );
+
+    $path =~ s{/dev/}{};
 
     my $lun = $self->iscsi_lun_get( $path, $self->{target} );
     if ( !$lun ) {
@@ -724,8 +727,11 @@ sub iscsi_lun_nextid {
 sub iscsi_lun_recreate {
     my ( $self, $path ) = @_;
 
-    $self->iscsi_lun_delete($path);
+    ( my $lun_path = $path ) =~ s{/dev/}{};
+
+    $self->iscsi_lun_delete($lun_path);
     $self->iscsi_lun_create($path);
+
 }
 
 # --- ZFS ---
