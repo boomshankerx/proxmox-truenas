@@ -6,6 +6,7 @@ use warnings;
 
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::RPCEnvironment;
+use PVE::Storage;
 
 use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
@@ -20,7 +21,13 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 # my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
 
 sub api {
-    return 11;
+    my $apiver_min = 11;
+    my $apiver_max = 12;
+    my $api_ver = PVE::Storage::APIVER;
+    if ($api_ver >= $apiver_min and $api_ver <= $apiver_max) {
+        return $api_ver;
+    }
+    return $apiver_max;
 }
 
 sub type {
