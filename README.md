@@ -25,13 +25,24 @@ Thank you for supporting open-source. Made with love for the community.
 ## Known Issues
 
 ### pvesm error
-
-The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
 ```
 400 Result verification failed
 config: type check ('object') failed
 pvesm add <type> <storage> [OPTIONS]
 ```
+The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
+
+### iSCSI GET_LBA_STATUS and iscsidirect
+
+```
+qemu-img: iSCSI GET_LBA_STATUS failed at lba 0: SENSE KEY:ILLEGAL_REQUEST(5) ASCQ:INVALID_FIELD_IN_CDB(0x2400)
+```
+
+This is a known warning that occurs during disk migration or backup when using iscsidirect with TrueNAS. It should have no effect on data transfer or integrity. See the discussions below for more information.
+
+https://forum.proxmox.com/threads/lsi-sas2308-scsi-controller-unsupported-sa-0x12.78785/  
+https://bugzilla.proxmox.com/show_bug.cgi?id=4046
+
 
 ### TPM Storage  
 
