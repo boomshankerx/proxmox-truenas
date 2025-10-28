@@ -233,6 +233,7 @@ sub on_add_hook {
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
     }
+    return undef;
 }
 
 sub path {
