@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.107](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.106...v1.0.107) (2025-10-28)
+
+
+### Bug Fixes
+
+* Ensure on_add_hook returns undef to fix pvesm error ([6643e33](https://github.com/boomshankerx/proxmox-truenas/commit/6643e331b7e044beaa5c8cad880b5ce06fbf96f0))
+
 ## [1.0.106](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.105...v1.0.106) (2025-10-21)
 
 
