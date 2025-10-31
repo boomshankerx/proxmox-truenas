@@ -24,14 +24,6 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Known Issues
 
-### pvesm error
-```
-400 Result verification failed
-config: type check ('object') failed
-pvesm add <type> <storage> [OPTIONS]
-```
-The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
-
 ### iSCSI GET_LBA_STATUS and iscsidirect
 
 ```
