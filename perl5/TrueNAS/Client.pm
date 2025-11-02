@@ -736,6 +736,23 @@ sub iscsi_lun_recreate {
 
 # --- ZFS ---
 
+sub zfs_dataset_get {
+    my ( $self, $dataset ) = @_;
+
+    my $query   = [ [ 'name', '=', $dataset ] ];
+    my $options = { get => \1, select => [ 'used.rawvalue', 'available.rawvalue', 'quota.rawvalue' ] };
+
+    my $result = $self->request( 'pool.dataset.query', $query, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to get dataset", 'error' );
+        return;
+    }
+
+    _log( "Queried dataset: $dataset", "debug" );
+
+    return $result;
+}
+
 sub zfs_snapshot_create {
     my ( $self, $snapshot ) = @_;
 
@@ -947,8 +964,8 @@ sub truenas_parse_version {
 
     if ( defined $version ) {
         if ( my $parsed =~ /^TrueNAS(?:-Scale)?-((\d+)\.(\d+))/ ) {
-            my ($ver, $major, $minor) = ($1, $2, $3);
-            return ($ver, $major, $minor);
+            my ( $ver, $major, $minor ) = ( $1, $2, $3 );
+            return ( $ver, $major, $minor );
         }
     }
 

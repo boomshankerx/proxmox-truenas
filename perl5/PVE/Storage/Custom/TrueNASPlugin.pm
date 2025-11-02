@@ -23,8 +23,8 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 sub api {
     my $apiver_min = 11;
     my $apiver_max = 12;
-    my $apiver = PVE::Storage::APIVER;
-    if ($apiver >= $apiver_min and $apiver <= $apiver_max) {
+    my $apiver     = PVE::Storage::APIVER;
+    if ( $apiver >= $apiver_min and $apiver <= $apiver_max ) {
         return $apiver;
     }
     return $apiver_max;
@@ -125,7 +125,6 @@ sub truenas_client_init {
 
     return;
 }
-
 
 # --- Storage implementation --------------------------------------------------------------
 
@@ -456,25 +455,28 @@ sub volume_resize {
 sub status {
     my ( $class, $storeid, $scfg, $cache ) = @_;
 
-    my $pool = ( split( "/", $scfg->{pool} ) )[0];
+    my $dataset = $scfg->{pool};
 
     my $active    = 0;
-    my $allocated = 0;
-    my $free      = 0;
+    my $used      = 0;
+    my $available = 0;
     my $total     = 0;
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zpool_get($pool);
+    my $result = $truenas_client->zfs_dataset_get($dataset);
     if ($result) {
         $active    = 1;
-        $allocated = $result->{allocated};
-        $free      = $result->{free};
-        $total     = $result->{size};
+        $used      = $result->{used}{rawvalue};
+        $available = $result->{available}{rawvalue};
+        $total     = $result->{quota}{rawvalue};
+        if ( $total == 0 ) {
+            $total = $used + $available;
+        }   
     }
 
-    _log( "Stus: total=$total, free=$free, allocated=$allocated, active=$active", 'debug' );
+    _log( "Status: total=$total, available=$available, used=$used, active=$active", 'debug' );
 
-    return ( $total, $free, $allocated, $active );
+    return ( $total, $available, $used, $active );
 
 }
 
