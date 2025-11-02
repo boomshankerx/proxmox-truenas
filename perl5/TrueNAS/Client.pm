@@ -40,7 +40,7 @@ sub new {
         client      => undef,
         conn        => undef,
         connected   => 0,
-        frame       => Protocol::WebSocket::Frame->new(),
+        frame       => Protocol::WebSocket::Frame->new( max_payload_size => 1 * 1024 * 1024 ),
         max_retries => 3,
         protocol    => 'jsonrpc',
         sock        => undef,
