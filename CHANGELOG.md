@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.108](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.107...v1.0.108) (2025-11-02)
+
+
+### Bug Fixes
+
+* Add zfs_dataset_get method to retrieve dataset details in TrueNAS client. fixes[#98](https://github.com/boomshankerx/proxmox-truenas/issues/98) ([0fee851](https://github.com/boomshankerx/proxmox-truenas/commit/0fee85140bdaa6812da317edb8b4c3347f0a548c))
+
 ## [1.0.107](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.106...v1.0.107) (2025-10-28)
 
 
