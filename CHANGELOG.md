@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.109](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.108...v1.0.109) (2025-11-02)
+
+
+### Bug Fixes
+
+* Set max_payload_size for WebSocket frame to 1MB in TrueNAS client ([87f574d](https://github.com/boomshankerx/proxmox-truenas/commit/87f574d771508c8e0d9e70dc2b0ff7d9b0c0d9c3))
+
 ## [1.0.108](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.107...v1.0.108) (2025-11-02)
 
 
