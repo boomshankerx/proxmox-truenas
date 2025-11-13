@@ -135,7 +135,7 @@ truenas: truenas
     truenas_use_ssl 1
 ```
 
-# TrueNAS Patch for ZFS over iSCSI (Depricated)
+# TrueNAS Patch for ZFS over iSCSI (Deprecated)
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
