@@ -67,7 +67,7 @@ Signed-By: /etc/apt/keyrings/proxmox-truenas.gpg
 EOF
 ```
 
-# TrueNAS over iSCSI Native Storage Plugin (RC1)
+# TrueNAS over iSCSI Native Storage Plugin
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
