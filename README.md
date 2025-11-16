@@ -110,16 +110,6 @@ pvesm add truenas truenas \
 --truenas_use_ssl 1
 ```
 
-#### Known Bug
-
-The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
-
-```
-400 Result verification failed
-config: type check ('object') failed
-pvesm add <type> <storage> [OPTIONS]
-```
-
 #### storage.cfg
 
 ```
