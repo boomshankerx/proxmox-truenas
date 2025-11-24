@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.110](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.109...v1.0.110) (2025-11-24)
+
+
+### Bug Fixes
+
+* Added 0.5 second wait in create_base to prevent race condition ([bbaedf9](https://github.com/boomshankerx/proxmox-truenas/commit/bbaedf914904c94a57819708d1ffe6e4e3fd6aed))
+
 ## [1.0.109](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.108...v1.0.109) (2025-11-02)
 
 
