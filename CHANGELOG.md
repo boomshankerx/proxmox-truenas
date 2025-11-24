@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.111](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.110...v1.0.111) (2025-11-24)
+
+
+### Bug Fixes
+
+* Bump supported APIVER to 13 ([a854097](https://github.com/boomshankerx/proxmox-truenas/commit/a8540976605ef3098f5fd98d998c64b410bdb6b0))
+
 ## [1.0.110](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.109...v1.0.110) (2025-11-24)
 
 
