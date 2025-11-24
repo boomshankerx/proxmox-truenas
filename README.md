@@ -67,7 +67,7 @@ Signed-By: /etc/apt/keyrings/proxmox-truenas.gpg
 EOF
 ```
 
-# TrueNAS over iSCSI Native Storage Plugin (RC1)
+# TrueNAS over iSCSI Native Storage Plugin
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
@@ -76,7 +76,7 @@ EOF
 - TrueNAS 25.10+  
 - Proxmox VE 8/9
 
-TrueNAS 25.10 has implmented API functionality that supports complete managment of iSCSI disk storage. TrueNAS 25.10 has reached RC1 status
+TrueNAS 25.10 has implmented API functionality that supports complete managment of iSCSI disk storage.
 
 There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the UI in version 9.1. Until then the plugin can be configured in storage.cfg.
 
@@ -110,16 +110,6 @@ pvesm add truenas truenas \
 --truenas_use_ssl 1
 ```
 
-#### Known Bug
-
-The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
-
-```
-400 Result verification failed
-config: type check ('object') failed
-pvesm add <type> <storage> [OPTIONS]
-```
-
 #### storage.cfg
 
 ```
@@ -135,7 +125,7 @@ truenas: truenas
     truenas_use_ssl 1
 ```
 
-# TrueNAS Patch for ZFS over iSCSI (Depricated)
+# TrueNAS Patch for ZFS over iSCSI (Deprecated)
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
