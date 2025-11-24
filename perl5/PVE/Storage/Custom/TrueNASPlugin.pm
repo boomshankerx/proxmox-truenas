@@ -169,11 +169,14 @@ sub create_base {
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
 
-    $result = $truenas_client->zfs_zvol_rename( "$scfg->{pool}/$name", "$scfg->{pool}/$newname" );
+    $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
 
-    $result = $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$newname");
+    $truenas_client->zfs_zvol_rename( "$scfg->{pool}/$name", "$scfg->{pool}/$newname" );
+
+    select( undef, undef, undef, 0.5 );    # wait for zfs to settle
+
+    $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$newname");
 
     $class->volume_snapshot( $scfg, $storeid, $newname, $snap );
 
@@ -273,7 +276,7 @@ sub rename_volume {
     my $target_zfspath = "${pool}/${target_volname}";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_rename( $source_zfspath, $target_zfspath );
+    $truenas_client->zfs_zvol_rename( $source_zfspath, $target_zfspath );
 
     $base_name = $base_name ? "${base_name}/" : '';
 
@@ -471,7 +474,7 @@ sub status {
         $total     = $result->{quota}{rawvalue};
         if ( $total == 0 ) {
             $total = $used + $available;
-        }   
+        }
     }
 
     _log( "Status: total=$total, available=$available, used=$used, active=$active", 'debug' );
