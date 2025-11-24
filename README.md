@@ -76,9 +76,11 @@ EOF
 - TrueNAS 25.10+  
 - Proxmox VE 8/9
 
-TrueNAS 25.10 has implmented API functionality that supports complete managment of iSCSI disk storage.
+TrueNAS 25.10 has implemented API functionality that supports complete management of iSCSI disk storage.
 
-There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the UI in version 9.1. Until then the plugin can be configured in storage.cfg.
+There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the WebUI. Progress updates can be tracked here: https://github.com/boomshankerx/proxmox-truenas/issues/113. Until then, the plugin can be configured in storage.cfg.
+
+
 
 ## Installation
 
