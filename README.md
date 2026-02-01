@@ -188,6 +188,8 @@ zfs: truenas
     truenas_user <USER>
 ```
 
-## Stargazers over time
-[![Stargazers over time](https://starchart.cc/boomshankerx/proxmox-truenas.svg?variant=dark)](https://starchart.cc/boomshankerx/proxmox-truenas)
+## Star History
+[![Star History Chart](https://api.star-history.com/svg?repos=boomshankerx/proxmox-truenas&type=date&legend=top-left)](https://www.star-history.com/#boomshankerx/proxmox-truenas&type=date&legend=top-left)
+
+
 
