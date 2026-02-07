@@ -352,9 +352,13 @@ sub _receive {
             return;
         }
 
+        my $hex = unpack( 'H*', $buffer );
+        _debug("LENGTH:" . length($buffer) . " BYTES:$hex ");
+
         $self->{frame}->append($buffer);
         if ( my $response = $self->{frame}->next ) {
             $self->{lastcall} = time;
+            _debug("LENGTH:" . length($response), $response );
             return $response;
         }
     }
