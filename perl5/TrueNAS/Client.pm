@@ -213,6 +213,7 @@ sub _connect {
                 $response .= $_;
                 last if $_ =~ /^\r?\n$/;
             }
+            _log( $response, 'debug' );
             $handshake->parse($response);
 
         };
@@ -229,6 +230,7 @@ sub _connect {
         _log("Connected");
         return;
     }
+
     croak "Failed to connect to any endpoint: $last_error";
 
 }
@@ -353,12 +355,24 @@ sub _receive {
         }
 
         my $hex = unpack( 'H*', $buffer );
-        _debug("LENGTH:" . length($buffer) . " BYTES:$hex ");
+        _log( "LENGTH:" . length($buffer) . " BYTES:$hex ", 'debug' );
 
         $self->{frame}->append($buffer);
         if ( my $response = $self->{frame}->next ) {
             $self->{lastcall} = time;
-            _debug("LENGTH:" . length($response), $response );
+            my $opcode = $self->{frame}->opcode;
+            if ( $opcode == 0x8 ) {
+                if ( length($response) >= 2 ) {
+                    my $reason = substr( $response, 2 );
+                    _log( "$reason", 'error' );
+                }
+                else {
+                    _log( "Connection closed by server", 'warn' );
+                }
+                $self->_disconnect;
+                croak "Connection closed by server";
+
+            }
             return $response;
         }
     }
