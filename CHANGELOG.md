@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.112](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.111...v1.0.112) (2026-02-10)
+
+
+### Bug Fixes
+
+* Fix for [#114](https://github.com/boomshankerx/proxmox-truenas/issues/114) ([2f2876c](https://github.com/boomshankerx/proxmox-truenas/commit/2f2876cfeeb20a8f335b2ce2442db876e190eb63))
+
 ## [1.0.111](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.110...v1.0.111) (2025-11-24)
 
 
