@@ -18,7 +18,7 @@ use PVE::SafeSyslog;
 use Scalar::Util     qw(reftype);
 use TrueNAS::Helpers qw(_log _debug justify bytes2gb);
 
-my $MAX_LUNS = 255;
+my $MAX_LUNS = 1024;
 
 sub new {
     my ( $class, $scfg ) = @_;
