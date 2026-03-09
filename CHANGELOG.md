@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.113](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.112...v1.0.113) (2026-03-09)
+
+
+### Bug Fixes
+
+* Increase maximum LUNs from 255 to 1024 ([a3e6122](https://github.com/boomshankerx/proxmox-truenas/commit/a3e61221147af61bc21c82d7e7eaefa847d37434))
+
 ## [1.0.112](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.111...v1.0.112) (2026-02-10)
 
 
