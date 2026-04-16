@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.114](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.113...v1.0.114) (2026-04-16)
+
+
+### Bug Fixes
+
+* Cast active status to integer in status method ([db7fc29](https://github.com/boomshankerx/proxmox-truenas/commit/db7fc2976084eae35e10dc2b836d2029c43ce7ee))
+
 ## [1.0.113](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.112...v1.0.113) (2026-03-09)
 
 
