@@ -479,7 +479,7 @@ sub status {
 
     _log( "Status: total=$total, available=$available, used=$used, active=$active", 'debug' );
 
-    return ( $total, $available, $used, $active );
+    return ( $total, $available, $used, int($active) );
 
 }
 
