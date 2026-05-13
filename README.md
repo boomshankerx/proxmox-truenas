@@ -38,12 +38,10 @@ https://bugzilla.proxmox.com/show_bug.cgi?id=4046
 
 ### TPM Storage  
 
-Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
+#### UPDATE
 
-#### Workaround (migration without snapshots)
-
-- Create an NFS/SMB share on your proxmox dataset
-- Store TPM disks on the NFS/SMB share
+Proxmox has added support for TPM storage for ZFS over iSCSI in qemu-server: 9.1.10
+https://bugzilla.proxmox.com/show_bug.cgi?id=3662
 
 ## APT Repository
 
