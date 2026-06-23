@@ -22,7 +22,7 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 
 sub api {
     my $apiver_min = 11;
-    my $apiver_max = 14;
+    my $apiver_max = 15;
     my $apiver     = PVE::Storage::APIVER;
     if ( $apiver >= $apiver_min and $apiver <= $apiver_max ) {
         return $apiver;
