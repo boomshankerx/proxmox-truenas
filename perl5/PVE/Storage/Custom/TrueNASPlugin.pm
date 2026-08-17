@@ -256,14 +256,11 @@ sub path {
 
     truenas_client_init($scfg);
     my $extent = $truenas_client->iscsi_lun_get($object);
-
-    if ( !defined($extent) ) {
-        for ( my $i = 1 ; $i <= 5 ; $i++ ) {
-            my $extent = $truenas_client->iscsi_lun_get($object);
-            last if $extent;
-            _log( "Retry $i/5...waiting 1 second", 'info' );
-            sleep(1);
-        }
+    for ( my $i = 1 ; !defined($extent) && $i <= 5 ; $i++ ) {
+        $extent = $truenas_client->iscsi_lun_get($object);
+        last if $extent;
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
     }
 
     die "zvol/$pool/$name not found" if !defined($extent);
@@ -308,15 +305,13 @@ sub qemu_blockdev_options {
     my $object = "zvol/$scfg->{pool}/$name";
 
     truenas_client_init($scfg);
-    my $extent = $truenas_client->iscsi_lun_get($object);
 
-    if ( !defined($extent) ) {
-        for ( my $i = 1 ; $i <= 5 ; $i++ ) {
-            my $extent = $truenas_client->iscsi_lun_get($object);
-            last if $extent;
-            _log( "Retry $i/5...waiting 1 second", 'info' );
-            sleep(1);
-        }
+    my $extent = $truenas_client->iscsi_lun_get($object);
+    for ( my $i = 1 ; !defined($extent) && $i <= 5 ; $i++ ) {
+        $extent = $truenas_client->iscsi_lun_get($object);
+        last if $extent;
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
     }
 
     die "zvol/$pool/$name not found" if !defined($extent);
