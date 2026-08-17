@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.119](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.118...v1.0.119) (2026-08-17)
+
+
+### Bug Fixes
+
+* Refactor iSCSI LUN retrieval with consolidated retry logic in TrueNASPlugin ([a514e69](https://github.com/boomshankerx/proxmox-truenas/commit/a514e698ab6ff7c4ba4369d743a2652d37590466))
+
 ## [1.0.118](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.117...v1.0.118) (2026-08-17)
 
 
