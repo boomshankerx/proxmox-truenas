@@ -392,11 +392,12 @@ sub free_image {
 }
 
 sub volume_resize {
-    my ($class, $scfg, $storeid, $volname, $size, $running) = @_;
+    my ($class, $scfg, $storeid, $volname, $size, $running, $snapname) = @_;
 
     $volname = ($class->parse_volname($volname))[1];
 
-    my $new_size = $class->SUPER::volume_resize($scfg, $storeid, $volname, $size, $running);
+    my $new_size =
+        $class->SUPER::volume_resize($scfg, $storeid, $volname, $size, $running, $snapname);
 
     $class->zfs_resize_lu($scfg, $volname, $new_size);
 

@@ -28,9 +28,6 @@ while [[ $# -gt 0 ]]; do
       patch=true
       shift
       ;;
-    -p|--patch)
-      patch=true
-      ;;
   esac
 done
 
@@ -41,7 +38,7 @@ if [ $reinstall ]; then
     echo "Reinstalling Proxmox packages..."
     rm ${PATH_ZFSPlugin}.orig
     rm ${PATH_Manager}.orig
-    apt reinstall pve-docs
+    # apt reinstall pve-docs
     apt reinstall pve-manager
     apt reinstall libpve-storage-perl
 else

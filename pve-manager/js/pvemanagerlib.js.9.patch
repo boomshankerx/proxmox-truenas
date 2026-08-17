@@ -1,6 +1,6 @@
---- pvemanagerlib.js.9.orig	2025-10-18 15:11:19.718523806 -0600
-+++ pvemanagerlib.js.9	2025-10-18 15:23:35.198297175 -0600
-@@ -9781,6 +9781,7 @@
+--- pvemanagerlib.js.9.orig	2026-08-16 21:25:00.176533425 -0600
++++ pvemanagerlib.js.9	2026-08-16 21:57:19.051577068 -0600
+@@ -11025,6 +11025,7 @@
      alias: ['widget.pveiScsiProviderSelector'],
      comboItems: [
          ['comstar', 'Comstar'],
@@ -8,15 +8,7 @@
          ['istgt', 'istgt'],
          ['iet', 'IET'],
          ['LIO', 'LIO'],
-@@ -64903,7 +64904,6 @@
-                     fields: ['total', 'used'],
-                     fieldTitles: ['Total Size', 'Used Size'],
-                     store: rrdstore,
--                    unit: 'bytes',
-                 },
-             ],
-             listeners: {
-@@ -65162,10 +65162,31 @@
+@@ -73803,10 +73804,31 @@
              },
          },
          changeISCSIProvider: function (f, newVal, oldVal) {
@@ -48,7 +40,7 @@
          },
      },
  
-@@ -65183,6 +65204,7 @@
+@@ -73824,6 +73846,7 @@
      },
  
      setValues: function (values) {
@@ -56,30 +48,16 @@
          values.writecache = values.nowritecache ? 0 : 1;
          this.callParent([values]);
      },
-@@ -65199,7 +65221,7 @@
-                 allowBlank: false,
-             },
-             {
--                xtype: me.isCreate ? 'textfield' : 'displayfield',
-+                xtype: 'textfield',
-                 name: 'pool',
-                 value: '',
-                 fieldLabel: gettext('Pool'),
-@@ -65209,11 +65231,11 @@
+@@ -73850,7 +73873,7 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'blocksize',
                  value: '4k',
 -                fieldLabel: gettext('Block Size'),
 +                fieldLabel: gettext('ZFS Block Size'),
                  allowBlank: false,
+                 validator: PVE.Utils.validateZfsBlocksize,
              },
-             {
--                xtype: me.isCreate ? 'textfield' : 'displayfield',
-+                xtype: 'textfield',
-                 name: 'target',
-                 value: '',
-                 fieldLabel: gettext('Target'),
-@@ -65224,9 +65246,108 @@
+@@ -73866,9 +73889,108 @@
                  name: 'comstar_tg',
                  value: '',
                  fieldLabel: gettext('Target group'),
@@ -190,7 +168,7 @@
          ];
  
          me.column2 = [
-@@ -65258,7 +65379,9 @@
+@@ -73900,7 +74022,9 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'comstar_hg',
                  value: '',
@@ -201,7 +179,7 @@
                  fieldLabel: gettext('Host group'),
                  allowBlank: true,
              },
-@@ -65266,9 +65389,11 @@
+@@ -73908,9 +74032,11 @@
                  xtype: me.isCreate ? 'textfield' : 'displayfield',
                  name: 'lio_tpg',
                  value: '',
