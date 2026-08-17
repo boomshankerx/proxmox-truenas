@@ -6,13 +6,13 @@ use warnings;
 
 use PVE::RESTEnvironment qw(log_warn);
 use PVE::RPCEnvironment;
+use PVE::Storage;
 
 use TrueNAS::Client;
 use TrueNAS::Helpers qw(_log _debug);
 
 # Global variable definitions
 my $base                = '/dev/zvol';
-my $dev_prefix          = "/dev/";
 my $MAX_LUNS            = 255;           # Max LUNS per target  the iSCSI server
 my $truenas_client      = undef;         # Pointer to entry in $truenas_server_list
 my $truenas_server_list = undef;         # API connection HashRef using the IP address of the server
@@ -21,7 +21,13 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 # my $truenas_iscsi_global_list = undef;         # IQN HashRef using the IP address of the server
 
 sub api {
-    return 12;
+    my $apiver_min = 11;
+    my $apiver_max = 15;
+    my $apiver     = PVE::Storage::APIVER;
+    if ( $apiver >= $apiver_min and $apiver <= $apiver_max ) {
+        return $apiver;
+    }
+    return $apiver_max;
 }
 
 sub type {
@@ -101,6 +107,7 @@ sub truenas_client_init {
         if ( !$result ) {
             die "Unable to connect to the TrueNAS API service at '" . $truenas_client->{uri} . "'\n";
         }
+        $truenas_client->{version} = $result;
         _log( "Version: " . $result );
 
     }
@@ -162,11 +169,14 @@ sub create_base {
     my $newvolname = $basename ? "$basename/$newname" : "$newname";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
 
-    $result = $truenas_client->zfs_zvol_rename( "$scfg->{pool}/$name", "$scfg->{pool}/$newname" );
+    $truenas_client->iscsi_lun_delete("$base/$scfg->{pool}/$name");
 
-    $result = $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$newname");
+    $truenas_client->zfs_zvol_rename( "$scfg->{pool}/$name", "$scfg->{pool}/$newname" );
+
+    select( undef, undef, undef, 0.5 );    # wait for zfs to settle
+
+    $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$newname");
 
     $class->volume_snapshot( $scfg, $storeid, $newname, $snap );
 
@@ -206,8 +216,8 @@ sub free_image {
     for ( my $i = 1 ; $i <= 5 ; $i++ ) {
         my $result = $truenas_client->zfs_zvol_delete("$scfg->{pool}/$name");
         last if $result;
-        _log( "Retrying zvol delete in " . ( $i * 5 ) . " seconds", 'info' );
-        sleep( $i * 5 );
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
     }
     return undef;
 }
@@ -225,6 +235,7 @@ sub on_add_hook {
     if ( !$scfg->{'zfs-base-path'} ) {
         $scfg->{'zfs-base-path'} = $base;
     }
+    return undef;
 }
 
 sub path {
@@ -265,7 +276,7 @@ sub rename_volume {
     my $target_zfspath = "${pool}/${target_volname}";
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zvol_rename( $source_zfspath, $target_zfspath );
+    $truenas_client->zfs_zvol_rename( $source_zfspath, $target_zfspath );
 
     $base_name = $base_name ? "${base_name}/" : '';
 
@@ -447,25 +458,28 @@ sub volume_resize {
 sub status {
     my ( $class, $storeid, $scfg, $cache ) = @_;
 
-    my $pool = ( split( "/", $scfg->{pool} ) )[0];
+    my $dataset = $scfg->{pool};
 
     my $active    = 0;
-    my $allocated = 0;
-    my $free      = 0;
+    my $used      = 0;
+    my $available = 0;
     my $total     = 0;
 
     truenas_client_init($scfg);
-    my $result = $truenas_client->zfs_zpool_get($pool);
+    my $result = $truenas_client->zfs_dataset_get($dataset);
     if ($result) {
         $active    = 1;
-        $allocated = $result->{allocated};
-        $free      = $result->{free};
-        $total     = $result->{size};
+        $used      = $result->{used}{rawvalue};
+        $available = $result->{available}{rawvalue};
+        $total     = $result->{quota}{rawvalue};
+        if ( $total == 0 ) {
+            $total = $used + $available;
+        }
     }
 
-    _log( "Stus: total=$total, free=$free, allocated=$allocated, active=$active", 'debug' );
+    _log( "Status: total=$total, available=$available, used=$used, active=$active", 'debug' );
 
-    return ( $total, $free, $allocated, $active );
+    return ( $total, $available, $used, int($active) );
 
 }
 
@@ -488,7 +502,7 @@ sub deactivate_storage {
 }
 
 sub activate_volume {
-    my ( $class, $storeid, $scfg, $volname, $snapname, $cache ) = @_;
+    my ( $class, $storeid, $scfg, $volname, $snapname, $cache, $hints ) = @_;
 
     die "unable to activate snapshot from remote zfs storage" if $snapname;
 

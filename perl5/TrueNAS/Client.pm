@@ -18,7 +18,7 @@ use PVE::SafeSyslog;
 use Scalar::Util     qw(reftype);
 use TrueNAS::Helpers qw(_log _debug justify bytes2gb);
 
-my $MAX_LUNS = 255;
+my $MAX_LUNS = 1024;
 
 sub new {
     my ( $class, $scfg ) = @_;
@@ -40,12 +40,13 @@ sub new {
         client      => undef,
         conn        => undef,
         connected   => 0,
-        frame       => Protocol::WebSocket::Frame->new(),
+        frame       => Protocol::WebSocket::Frame->new( max_payload_size => 1 * 1024 * 1024 ),
         max_retries => 3,
         protocol    => 'jsonrpc',
         sock        => undef,
         timeout     => 60,
         lastcall    => undef,
+        version     => undef,
 
         # Message Handling
         msg_id => 0,
@@ -212,6 +213,7 @@ sub _connect {
                 $response .= $_;
                 last if $_ =~ /^\r?\n$/;
             }
+            _log( $response, 'debug' );
             $handshake->parse($response);
 
         };
@@ -228,6 +230,7 @@ sub _connect {
         _log("Connected");
         return;
     }
+
     croak "Failed to connect to any endpoint: $last_error";
 
 }
@@ -351,9 +354,25 @@ sub _receive {
             return;
         }
 
+        my $hex = unpack( 'H*', $buffer );
+        _log( "LENGTH:" . length($buffer) . " BYTES:$hex ", 'debug' );
+
         $self->{frame}->append($buffer);
         if ( my $response = $self->{frame}->next ) {
             $self->{lastcall} = time;
+            my $opcode = $self->{frame}->opcode;
+            if ( $opcode == 0x8 ) {
+                if ( length($response) >= 2 ) {
+                    my $reason = substr( $response, 2 );
+                    _log( "$reason", 'error' );
+                }
+                else {
+                    _log( "Connection closed by server", 'warn' );
+                }
+                $self->_disconnect;
+                croak "Connection closed by server";
+
+            }
             return $response;
         }
     }
@@ -505,7 +524,7 @@ sub _message_sanatize {
     return @params;
 }
 
-# EVENTS
+# --- EVENTS ---
 
 sub on_error {
     my ( $self, $error ) = @_;
@@ -524,7 +543,7 @@ sub on_error {
 
 }
 
-# PROPERTIES
+# --- PROPERTIES ---
 
 sub response {
     my ($self) = @_;
@@ -551,7 +570,7 @@ sub has_error {
     return defined( $self->{error} );
 }
 
-## ISCSI METHODS
+# --- ISCSI ---
 
 sub iscsi_global_config {
     my ($self) = @_;
@@ -610,7 +629,7 @@ sub iscsi_lun_get {
 
     my $target_id = $self->iscsi_target_getid($target_name);
 
-    $query   = _build_query( { path => $path } );
+    $query   = _build_query( { disk => $path } );
     $options = { get => \1 };
     my $extent = $self->request( 'iscsi.extent.query', $query, $options );
     if ( !$extent ) {
@@ -731,6 +750,25 @@ sub iscsi_lun_recreate {
     $self->iscsi_lun_delete($lun_path);
     $self->iscsi_lun_create($path);
 
+}
+
+# --- ZFS ---
+
+sub zfs_dataset_get {
+    my ( $self, $dataset ) = @_;
+
+    my $query   = [ [ 'name', '=', $dataset ] ];
+    my $options = { get => \1, select => [ 'used.rawvalue', 'available.rawvalue', 'quota.rawvalue' ] };
+
+    my $result = $self->request( 'pool.dataset.query', $query, $options );
+    if ( $self->has_error ) {
+        _log( "Failed to get dataset", 'error' );
+        return;
+    }
+
+    _log( "Queried dataset: $dataset", "debug" );
+
+    return $result;
 }
 
 sub zfs_snapshot_create {
@@ -932,9 +970,24 @@ sub zfs_zpool_get {
         return;
     }
 
-    _log("Queried zpool: $pool");
+    _log( "Queried zpool: $pool", "debug" );
 
     return $result;
+}
+
+# --- HELPERS ---
+
+sub truenas_parse_version {
+    my ($version) = @_;
+
+    if ( defined $version ) {
+        if ( my $parsed =~ /^TrueNAS(?:-Scale)?-((\d+)\.(\d+))/ ) {
+            my ( $ver, $major, $minor ) = ( $1, $2, $3 );
+            return ( $ver, $major, $minor );
+        }
+    }
+
+    return undef;
 }
 
 1;

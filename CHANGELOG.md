@@ -1,5 +1,120 @@
 # Changelog
 
+## [1.0.116](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.115...v1.0.116) (2026-06-23)
+
+
+### Bug Fixes
+
+* Update maximum API version to 15 in TrueNASPlugin ([b1c3478](https://github.com/boomshankerx/proxmox-truenas/commit/b1c3478df65ea37cb64fafabab0b2afa4d77866c))
+
+## [1.0.115](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.114...v1.0.115) (2026-05-13)
+
+
+### Bug Fixes
+
+* Update maximum API version to 14 in TrueNASPlugin ([b2674d1](https://github.com/boomshankerx/proxmox-truenas/commit/b2674d1ef3eae6157c1f3361bffbcc3b5692d33f))
+
+## [1.0.114](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.113...v1.0.114) (2026-04-16)
+
+
+### Bug Fixes
+
+* Cast active status to integer in status method ([db7fc29](https://github.com/boomshankerx/proxmox-truenas/commit/db7fc2976084eae35e10dc2b836d2029c43ce7ee))
+
+## [1.0.113](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.112...v1.0.113) (2026-03-09)
+
+
+### Bug Fixes
+
+* Increase maximum LUNs from 255 to 1024 ([a3e6122](https://github.com/boomshankerx/proxmox-truenas/commit/a3e61221147af61bc21c82d7e7eaefa847d37434))
+
+## [1.0.112](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.111...v1.0.112) (2026-02-10)
+
+
+### Bug Fixes
+
+* Fix for [#114](https://github.com/boomshankerx/proxmox-truenas/issues/114) ([2f2876c](https://github.com/boomshankerx/proxmox-truenas/commit/2f2876cfeeb20a8f335b2ce2442db876e190eb63))
+
+## [1.0.111](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.110...v1.0.111) (2025-11-24)
+
+
+### Bug Fixes
+
+* Bump supported APIVER to 13 ([a854097](https://github.com/boomshankerx/proxmox-truenas/commit/a8540976605ef3098f5fd98d998c64b410bdb6b0))
+
+## [1.0.110](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.109...v1.0.110) (2025-11-24)
+
+
+### Bug Fixes
+
+* Added 0.5 second wait in create_base to prevent race condition ([bbaedf9](https://github.com/boomshankerx/proxmox-truenas/commit/bbaedf914904c94a57819708d1ffe6e4e3fd6aed))
+
+## [1.0.109](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.108...v1.0.109) (2025-11-02)
+
+
+### Bug Fixes
+
+* Set max_payload_size for WebSocket frame to 1MB in TrueNAS client ([87f574d](https://github.com/boomshankerx/proxmox-truenas/commit/87f574d771508c8e0d9e70dc2b0ff7d9b0c0d9c3))
+
+## [1.0.108](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.107...v1.0.108) (2025-11-02)
+
+
+### Bug Fixes
+
+* Add zfs_dataset_get method to retrieve dataset details in TrueNAS client. fixes[#98](https://github.com/boomshankerx/proxmox-truenas/issues/98) ([0fee851](https://github.com/boomshankerx/proxmox-truenas/commit/0fee85140bdaa6812da317edb8b4c3347f0a548c))
+
+## [1.0.107](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.106...v1.0.107) (2025-10-28)
+
+
+### Bug Fixes
+
+* Ensure on_add_hook returns undef to fix pvesm error ([6643e33](https://github.com/boomshankerx/proxmox-truenas/commit/6643e331b7e044beaa5c8cad880b5ce06fbf96f0))
+
+## [1.0.106](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.105...v1.0.106) (2025-10-21)
+
+
+### Bug Fixes
+
+* Revert changes to base path. Caused issues with patch version. ([0c28170](https://github.com/boomshankerx/proxmox-truenas/commit/0c2817043e0992e095aab5d1d4039b8b2c2a6724))
+
+## [1.0.105](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.104...v1.0.105) (2025-10-21)
+
+
+### Bug Fixes
+
+* Return dynamic APIVER based on proxmox 8/9 ([53c2a6e](https://github.com/boomshankerx/proxmox-truenas/commit/53c2a6ea6fa1bd436b583bffed401fbe8a9f3bed))
+
+## [1.0.104](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.103...v1.0.104) (2025-10-20)
+
+
+### Bug Fixes
+
+* Add version handling and improve iSCSI LUN management in TrueNAS client ([d77aafc](https://github.com/boomshankerx/proxmox-truenas/commit/d77aafc932dd0c3d68afff058732f6db8b78dd11))
+
+## [1.0.103](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.102...v1.0.103) (2025-10-20)
+
+
+### Bug Fixes
+
+* Changed delete zvol retry wait time to 1 second ([bbe0a56](https://github.com/boomshankerx/proxmox-truenas/commit/bbe0a56118a39e6f1f80b638e84e1b81ac2e8da2))
+* Changed the wrong log message for querying zpool. fixed. ([5ab6d73](https://github.com/boomshankerx/proxmox-truenas/commit/5ab6d73a7ecbb0d79b532a489dbabc8767922809))
+
+## [1.0.102](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.101...v1.0.102) (2025-10-20)
+
+
+### Bug Fixes
+
+* Made logging for zvol list query debug only. ([c1d4a1f](https://github.com/boomshankerx/proxmox-truenas/commit/c1d4a1f923fac63191b679537c8ee64e7975aec8))
+* Reduced APIVER to 11 to support proxmox 8.4 ([5509f42](https://github.com/boomshankerx/proxmox-truenas/commit/5509f423ae733a64a2f65db548725b7f3edce042))
+
+## [1.0.101](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.100...v1.0.101) (2025-10-18)
+
+
+### Bug Fixes
+
+* Added target validation and default to secure connection ([36c7a76](https://github.com/boomshankerx/proxmox-truenas/commit/36c7a766d26e3c8a58a8548ed3b09e686e4f5563))
+* Bump pve-manager to 9.0.11 ([402786c](https://github.com/boomshankerx/proxmox-truenas/commit/402786c304e7867c6d830894c7839cc776c9fca4))
+
 ## [1.0.100](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.99...v1.0.100) (2025-10-08)
 
 

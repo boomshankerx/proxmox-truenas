@@ -2,7 +2,7 @@
 
 ## Acknowledgement
 
-This plugin was made possible by the great work at <https://github.com/TheGrandWazoo/freenas-proxmox>. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.04+
+This plugin was made possible by the great work at <https://github.com/TheGrandWazoo/freenas-proxmox>. It has been converted to be compatible with the TrueNAS WebSocket API. It is currently being targeted at Proxmox VE 8+ and TrueNAS 24.10+
 
 ## Donations
 
@@ -24,14 +24,24 @@ Thank you for supporting open-source. Made with love for the community.
 
 ## Known Issues
 
+### iSCSI GET_LBA_STATUS and iscsidirect
+
+```
+qemu-img: iSCSI GET_LBA_STATUS failed at lba 0: SENSE KEY:ILLEGAL_REQUEST(5) ASCQ:INVALID_FIELD_IN_CDB(0x2400)
+```
+
+This is a known warning that occurs during disk migration or backup when using iscsidirect with TrueNAS. It should have no effect on data transfer or integrity. See the discussions below for more information.
+
+https://forum.proxmox.com/threads/lsi-sas2308-scsi-controller-unsupported-sa-0x12.78785/  
+https://bugzilla.proxmox.com/show_bug.cgi?id=4046
+
+
 ### TPM Storage  
 
-Proxmox currently doesn't support storing TPM disk on iSCSI LUN. The solution is being discussed here: <https://bugzilla.proxmox.com/show_bug.cgi?id=4693>
+#### UPDATE
 
-#### Workaround (migration without snapshots)
-
-- Create an NFS/SMB share on your proxmox dataset
-- Store TPM disks on the NFS/SMB share
+Proxmox has added support for TPM storage for ZFS over iSCSI in qemu-server: 9.1.10
+https://bugzilla.proxmox.com/show_bug.cgi?id=3662
 
 ## APT Repository
 
@@ -55,7 +65,7 @@ Signed-By: /etc/apt/keyrings/proxmox-truenas.gpg
 EOF
 ```
 
-# TrueNAS over iSCSI Native Storage Plugin (RC1)
+# TrueNAS over iSCSI Native Storage Plugin
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
@@ -64,9 +74,11 @@ EOF
 - TrueNAS 25.10+  
 - Proxmox VE 8/9
 
-TrueNAS 25.10 has implmented API functionality that supports complete managment of iSCSI disk storage. TrueNAS 25.10 has reached RC1 status
+TrueNAS 25.10 has implemented API functionality that supports complete management of iSCSI disk storage.
 
-There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the UI in version 9.1. Until then the plugin can be configured in storage.cfg.
+There is currently no Web UI integration for this native plugin. Proxmox has indicated that they are working on the ability for storage plugins to better integrate into the WebUI. Progress updates can be tracked here: https://github.com/boomshankerx/proxmox-truenas/issues/113. Until then, the plugin can be configured in storage.cfg.
+
+
 
 ## Installation
 
@@ -98,16 +110,6 @@ pvesm add truenas truenas \
 --truenas_use_ssl 1
 ```
 
-#### Known Bug
-
-The pvesm command will return the following message but the storage will be added correctly and begin to operate. I'm working with proxmox to troubleshoot the error.
-
-```
-400 Result verification failed
-config: type check ('object') failed
-pvesm add <type> <storage> [OPTIONS]
-```
-
 #### storage.cfg
 
 ```
@@ -123,14 +125,14 @@ truenas: truenas
     truenas_use_ssl 1
 ```
 
-# TrueNAS Patch for ZFS over iSCSI (Depricated)
+# TrueNAS Patch for ZFS over iSCSI (Deprecated)
 
 **BOTH VERSIONS OF THIS PLUGIN CANNOT BE INSTALLED AT THE SAME TIME**
 
 ## Compatibility
 
-- TrueNAS 24.04 - 25.04
-- pve-manager 8.4.14 / 9.0.10  
+- TrueNAS 24.10 - 25.10
+- pve-manager 8.4.14 / 9.0.11  
 - libpve-storage-perl 8.3.7 / 9.0.13  
 
 TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
@@ -184,6 +186,8 @@ zfs: truenas
     truenas_user <USER>
 ```
 
-## Stargazers over time
-[![Stargazers over time](https://starchart.cc/boomshankerx/proxmox-truenas.svg?variant=dark)](https://starchart.cc/boomshankerx/proxmox-truenas)
+## Star History
+[![Star History Chart](https://api.star-history.com/svg?repos=boomshankerx/proxmox-truenas&type=date&legend=top-left)](https://www.star-history.com/#boomshankerx/proxmox-truenas&type=date&legend=top-left)
+
+
 

@@ -73,12 +73,17 @@ sub _create_lu {
 
     _log($lun_path);
 
-    sleep(1);    # wait 1 second to prevent race condition from zvol creation to lun creation
+    # Prevent race condition
+    select(undef, undef, undef, 0.5);
+
     my $result = $truenas_client->iscsi_lun_create($lun_path);
     
     if (!$result) {
         die "Unable to create lun $lun_path";
     }
+
+    # Prevent race condition
+    select(undef, undef, undef, 0.5);
 
     return "";
 }
@@ -95,6 +100,9 @@ sub _delete_lu {
     if (!$result) {
         _log("Unable to delete lun $lun_path");
     }
+
+    # Prevent race condition
+    select(undef, undef, undef, 0.5);
 
     return "";
 }
