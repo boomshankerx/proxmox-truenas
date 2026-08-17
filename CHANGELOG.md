@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.117](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.116...v1.0.117) (2026-08-17)
+
+
+### Bug Fixes
+
+* Update patch files for PVE 9.2.10 ([0e72a0c](https://github.com/boomshankerx/proxmox-truenas/commit/0e72a0c5606a1d7e3bf58c92cc759d7a1d6db44e))
+
 ## [1.0.116](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.115...v1.0.116) (2026-06-23)
 
 
