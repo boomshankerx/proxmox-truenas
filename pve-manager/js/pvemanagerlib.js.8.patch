@@ -28,7 +28,7 @@
 +                me.lookupReference('truenas_password_field').allowBlank = true;
 +                me.lookupReference('truenas_confirmpw_field').setValue('');
 +                me.lookupReference('truenas_confirmpw_field').allowBlank = true;
-+                me.lookupReference('truenas_apikey').setValue('');
++                me.lookupReference('truenas_apikey_field').setValue('');
 +                me.lookupReference('truenas_apikey_field').allowBlank = true;
 +            } else {
 +                me.lookupReference('truenas_use_ssl_field').setValue(true);
