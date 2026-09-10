@@ -16,7 +16,7 @@ function write(file, data, mode = 0o644) {
 
 function workspace() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'truenas-script-test-'));
-  for (const item of ['build.sh', 'deploy.sh', 'perl5', 'pve-manager', 'pve-docs']) {
+  for (const item of ['build.sh', 'deploy.sh', 'script-common.sh', 'perl5', 'pve-manager', 'pve-docs']) {
     fs.cpSync(path.join(repo, item), path.join(dir, item), { recursive: true });
   }
   const deploy = path.join(dir, 'deploy.sh');
@@ -79,6 +79,7 @@ function deployFixture(dir, version = 8) {
   return share;
 }
 
+// Verify both patches are generated when invoked outside the repository directory.
 test('build generates versioned patches from another cwd and publishes both outputs', () => {
   const dir = workspace();
   try {
@@ -95,6 +96,7 @@ test('build generates versioned patches from another cwd and publishes both outp
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+// Verify missing inputs or diff errors preserve both existing patch files.
 test('build preserves both prior outputs when an input is missing or diff fails', () => {
   for (const failure of ['missing', 'diff']) {
     const dir = workspace();
@@ -119,6 +121,7 @@ test('build preserves both prior outputs when an input is missing or diff fails'
   }
 });
 
+// Verify preflight failures avoid deployment and Native supports a first install.
 test('deploy validates flags/resources and native first install without side effects', () => {
   for (const args of [['--unknown'], ['--help']]) {
     const dir = workspace();
@@ -151,10 +154,11 @@ test('deploy validates flags/resources and native first install without side eff
     const native = run(dir, 'deploy.sh');
     assert.equal(native.status, 0, native.stderr);
     assert.match(fs.readFileSync(path.join(dir, 'usr/share/perl5/PVE/Storage/Custom/TrueNASPlugin.pm'), 'utf8'), /package/);
-    assert.match(fs.readFileSync(path.join(dir, 'commands.log'), 'utf8'), /systemctl restart pvedaemon pvestatd pveproxy/);
+    assert.match(fs.readFileSync(path.join(dir, 'commands.log'), 'utf8'), /systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
+// Verify both PVE patch variants deploy successfully and installation failures prevent restart.
 test('deploy patches versions 8 and 9 and stops without restart on failures', () => {
   for (const version of [8, 9]) {
     const dir = workspace();
@@ -163,7 +167,7 @@ test('deploy patches versions 8 and 9 and stops without restart on failures', ()
       const result = run(dir, 'deploy.sh', ['-p'], { PVE_VERSION: `${version}.0-1` });
       assert.equal(result.status, 0, result.stderr);
       assert.equal(fs.readFileSync(path.join(dir, 'usr/share/pve-manager/js/pvemanagerlib.js'), 'utf8'), 'manager-new\n');
-      assert.doesNotMatch(fs.readFileSync(path.join(dir, 'commands.log'), 'utf8'), /corosync|pve-cluster/);
+      assert.match(fs.readFileSync(path.join(dir, 'commands.log'), 'utf8'), /^systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy\n$/);
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   }
   {
@@ -188,5 +192,39 @@ test('deploy patches versions 8 and 9 and stops without restart on failures', ()
       assert.equal(fs.readFileSync(path.join(dir, 'usr/share/perl5/PVE/Storage/ZFSPlugin.pm'), 'utf8'), 'zfs-old\n');
       if (fail === 'apt') assert.equal(fs.readFileSync(path.join(dir, 'usr/share/pve-manager/js/pvemanagerlib.js.orig'), 'utf8'), 'manager-old\n');
     } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+  }
+});
+
+// Verify shared helpers return values without overwriting caller variables or hiding errors.
+test('shared version helpers use stdout and preserve caller state', () => {
+  const common = path.join(repo, 'script-common.sh');
+  const check = (body) => {
+    const result = spawnSync('/bin/bash', ['-c', 'set -euo pipefail; source "$1"; ' + body, 'test', common],
+      { encoding: 'utf8', timeout: 3000 });
+    assert.ifError(result.error);
+    assert.equal(result.signal, null);
+    return result;
+  };
+  const success = check(`
+    manager_version=manager-sentinel; storage_version=storage-sentinel; ver=ver-sentinel
+    package=package-sentinel; version=version-sentinel
+    dpkg-query() { printf '%s\\n' '9.2.10'; }
+    query_package_version pve-manager
+    detect_pve_version 8.4.14
+    result=$(detect_pve_version 9.2.10)
+    [[ "$result" == 9 && "$manager_version" == manager-sentinel && "$storage_version" == storage-sentinel && "$ver" == ver-sentinel ]]
+    [[ "$package" == package-sentinel && "$version" == version-sentinel ]]
+  `);
+  assert.equal(success.status, 0, success.stderr);
+  assert.equal(success.stdout, '9.2.10\n8\n');
+  for (const [body, message] of [
+    ['dpkg-query() { return 73; }; result=$(query_package_version pve-manager)', /Cannot query pve-manager/],
+    ['dpkg-query() { :; }; result=$(query_package_version libpve-storage-perl)', /Missing libpve-storage-perl/],
+    ['result=$(detect_pve_version 10.0)', /Unsupported pve-manager/],
+  ]) {
+    const failure = check(body + '; echo unexpected-success');
+    assert.notEqual(failure.status, 0);
+    assert.equal(failure.stdout, '');
+    assert.match(failure.stderr, message);
   }
 });

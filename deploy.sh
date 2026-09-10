@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-fail() { echo "[!] $*" >&2; exit 1; }
+# Load shared helpers from the script directory.
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source "$SCRIPT_DIR/script-common.sh"
+
+# Parse options before checking packages or changing files.
 debug=false
 reinstall=false
 patch_mode=false
@@ -19,29 +23,24 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# Define installed file locations.
 PATH_Helper="/usr/share/perl5/TrueNAS/Helpers.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
 PATH_Native="/usr/share/perl5/PVE/Storage/Custom/TrueNASPlugin.pm"
 PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
 PATH_LunCmd="/usr/share/perl5/PVE/Storage/LunCmd"
 
+# Check required tools and the installed PVE version.
 commands=(dpkg-query cp mv rm mkdir mktemp rsync systemctl)
 $patch_mode && commands+=(patch)
 $reinstall && commands+=(apt)
 $debug && commands+=(sed)
-for command in "${commands[@]}"; do
-  command -v "$command" >/dev/null || fail "Missing command: $command"
-done
-manager_version=$(dpkg-query -W -f='${Version}' pve-manager) || fail "Cannot query pve-manager version"
-storage_version=$(dpkg-query -W -f='${Version}' libpve-storage-perl) || fail "Cannot query libpve-storage-perl version"
-case "$manager_version" in
-  8.*) ver=8 ;;
-  9.*) ver=9 ;;
-  *) fail "Unsupported pve-manager version: $manager_version" ;;
-esac
-[[ -n "$storage_version" ]] || fail "Missing libpve-storage-perl version"
+require_commands "${commands[@]}"
+manager_version=$(query_package_version pve-manager)
+storage_version=$(query_package_version libpve-storage-perl)
+ver=$(detect_pve_version "$manager_version")
 
+# Check the source files required by the selected mode.
 resources=("$SCRIPT_DIR/perl5/TrueNAS/Client.pm" "$SCRIPT_DIR/perl5/TrueNAS/Helpers.pm")
 if $patch_mode; then
   resources+=("$SCRIPT_DIR/perl5/PVE/Storage/LunCmd/TrueNAS.pm"
@@ -54,17 +53,20 @@ for resource in "${resources[@]}"; do
   [[ -f "$resource" && -r "$resource" ]] || fail "Missing readable resource: $resource"
 done
 
+# Report the failed stage and clean up temporary patch files.
 stage="preparing deployment"
 work=""
 trap 'echo "[!] Failed while $stage. Deployment stopped; no successful completion. Check the reported step and retained .orig backups before retrying." >&2' ERR
 trap 'if [[ -n "$work" ]]; then rm -rf -- "$work"; fi' EXIT
 
+# Optionally reinstall Proxmox packages before preparing plugin files.
 if $reinstall; then
   stage="reinstalling Proxmox packages"
   # Keep existing backups until reinstall and patch preparation have succeeded.
   apt reinstall pve-manager libpve-storage-perl
 fi
 
+# Prepare both patches on copies before installing either result.
 targets=("$PATH_ZFSPlugin" "$PATH_Manager")
 if $patch_mode; then
   stage="preparing patches"
@@ -83,6 +85,7 @@ if $patch_mode; then
   done
 fi
 
+# Install the shared client and optionally enable debug logging.
 stage="copying TrueNAS client"
 rsync -av --delete "$SCRIPT_DIR/perl5/TrueNAS" /usr/share/perl5/
 if $debug; then
@@ -90,6 +93,7 @@ if $debug; then
   sed -i "s/log_level => 'info'/log_level => 'debug'/g" "$PATH_Helper"
 fi
 
+# Install Patch mode, or restore originals and install Native mode.
 if $patch_mode; then
   stage="installing ZFS-over-iSCSI patches"
   mkdir -p -- "$PATH_LunCmd"
@@ -115,6 +119,10 @@ else
   rm -f -- /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm
 fi
 
-stage="restarting Proxmox API and status services"
-systemctl restart pvedaemon pvestatd pveproxy
+# Restart services only after all installation steps have succeeded.
+stage="restarting Proxmox services"
+# TODO: Consider restarting only pvedaemon, pvestatd and pveproxy after
+# validating on real PVE that corosync and pve-cluster do not need a restart.
+# Preserve the original restart list until then.
+systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy
 echo "[+] Deployment completed."

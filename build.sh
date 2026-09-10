@@ -1,22 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-fail() { echo "[!] $*" >&2; exit 1; }
-[[ $# -eq 0 ]] || fail "Usage: $0"
+# Load shared helpers from the script directory.
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-for command in dpkg-query diff mktemp mv rm; do
-  command -v "$command" >/dev/null || fail "Missing command: $command"
-done
+source "$SCRIPT_DIR/script-common.sh"
 
-manager_version=$(dpkg-query -W -f='${Version}' pve-manager) || fail "Cannot query pve-manager version"
-storage_version=$(dpkg-query -W -f='${Version}' libpve-storage-perl) || fail "Cannot query libpve-storage-perl version"
-case "$manager_version" in
-  8.*) ver=8 ;;
-  9.*) ver=9 ;;
-  *) fail "Unsupported pve-manager version: $manager_version" ;;
-esac
-[[ -n "$storage_version" ]] || fail "Missing libpve-storage-perl version"
+# Validate arguments, tools and the installed PVE version.
+[[ $# -eq 0 ]] || fail "Usage: $0"
+require_commands dpkg-query diff mktemp mv rm
+manager_version=$(query_package_version pve-manager)
+storage_version=$(query_package_version libpve-storage-perl)
+ver=$(detect_pve_version "$manager_version")
 
+# Check both original and edited inputs before generating patches.
 sources=("$SCRIPT_DIR/perl5/PVE/Storage/ZFSPlugin.pm.$ver"
          "$SCRIPT_DIR/pve-manager/js/pvemanagerlib.js.$ver")
 for source in "${sources[@]}"; do
@@ -24,11 +20,13 @@ for source in "${sources[@]}"; do
   [[ -f "$source" && -r "$source" ]] || fail "Missing readable input: $source"
 done
 
+# Generate into temporary files and remove them on exit.
 temporary=()
 cleanup() {
-  for file in "${temporary[@]}"; do rm -f -- "$file"; done
+  local file
+  for file in "$@"; do rm -f -- "$file"; done
 }
-trap cleanup EXIT
+trap 'cleanup "${temporary[@]}"' EXIT
 for source in "${sources[@]}"; do
   output=$(mktemp "$source.patch.XXXXXX")
   temporary+=("$output")

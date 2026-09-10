@@ -133,7 +133,7 @@ truenas: truenas
 
 - TrueNAS 24.10 - 25.10
 - pve-manager 8.4.14 / 9.2.10  
-- libpve-storage-perl 8.3.7 / 9.2.10
+- libpve-storage-perl 8.3.7 / 9.1.10
 
 These are the patch baselines, not a guarantee for every PVE 8/9 minor release.
 The source deployment script selects patches using the installed `pve-manager`
@@ -192,49 +192,36 @@ zfs: truenas
 
 ## Working from a source checkout
 
-The APT installation instructions above remain the usual installation path.
-For source development on a PVE host, `bash /path/to/deploy.sh` installs Native;
-add `--patch` to install the alternative ZFS-over-iSCSI integration. These modes
-must not be used for the same storage configuration at the same time. The scripts
-resolve inputs relative to their own location, so the current directory need not
-be the repository root.
+APT is the usual installation method. For source development on a PVE 8/9 host,
+keep `script-common.sh` and the source directories alongside the scripts. The build and deploy scripts
+can run from any working directory:
 
-`deploy.sh` checks its commands, package versions and source resources before
-installation. Missing `.orig` backups are normal on first installation. Patch
-mode applies both patches to temporary copies before installing them, retaining
-`.orig` files for recovery; Native mode restores those backups when present.
-`--reinstall` first reinstalls `pve-manager` and `libpve-storage-perl`, and only
-replaces or removes old backups after that succeeds. Do not mix source deployment
-with package-managed plugin updates without accounting for which files each owns.
+```bash
+bash /path/to/deploy.sh           # Install Native (default)
+bash /path/to/deploy.sh --patch   # Install the alternative ZFS-over-iSCSI integration
+bash /path/to/build.sh            # Generate the versioned ZFS/UI patches
+node --test tests/*.test.cjs      # Run regressions from the checkout directory
+```
 
-Failures stop deployment with a nonzero status and the failed stage. The script
-does not automatically roll back earlier file copies or package operations;
-inspect the reported step and backups before retrying. Only successful installation
-reaches the `pvedaemon`, `pvestatd` and `pveproxy` restart step; the script does not
-restart `corosync` or `pve-cluster`. Refresh the browser after a UI patch update.
+Use only one integration per storage configuration. `--reinstall` reinstalls
+`pve-manager` and `libpve-storage-perl` first; `--debug` enables logging that may
+expose credentials and RPC payloads. Avoid mixing source and package-managed updates.
 
-`bash /path/to/build.sh` generates the two versioned ZFS/UI patches. Supply both
-original and edited inputs (`ZFSPlugin.pm.8.orig`/`.8` and
-`pvemanagerlib.js.8.orig`/`.8`, or their `.9` equivalents) beside the patch outputs.
-The maintainer's `patches` branch contains these editing inputs. Missing inputs
-or a failed `diff` leave existing outputs intact; differences reported by `diff`
-are successful generation, not execution errors. No API viewer patch is generated
-or installed. Files under `pve-docs/api-viewer/` and the old `*.orig.patch` files
-are historical references, not supported installation outputs.
+Patch mode checks both patches on copies before installation. `.orig` backups
+are retained in Patch mode and restored in Native mode when present. Failures stop
+the script but do not roll back earlier changes; inspect errors and backups before
+retrying. Successful installation restarts `corosync`, `pve-cluster`, `pvedaemon`,
+`pvestatd` and `pveproxy`. Refresh the browser after UI changes.
 
-These script fixes do not change credential storage or connection settings.
-The current client does not verify the TLS server certificate and uses TLS even
-when `truenas_use_ssl` is `0`. Hardening those behaviors requires a separate,
-explicit compatibility and migration decision. `--debug` remains opt-in; current
-client debug logs can include credentials and RPC payloads, so use disposable
-test credentials and do not publish those logs. This change does not establish
-support for Native stream-based storage migration through inherited local ZFS
-import/export paths.
+Building requires original and edited `.8` or `.9` files beside the patch outputs
+(e.g. `ZFSPlugin.pm.8.orig` and `ZFSPlugin.pm.8`), available on the maintainer's
+`patches` branch. Missing inputs or diff errors preserve existing patches.
+API viewer files and `*.orig.patch` are historical references, not build outputs.
 
-Run the local regressions with `node --test tests/*.test.cjs`. Script tests use
-temporary files and command substitutes; they do not establish live PVE/TrueNAS
-deployment, browser, or iSCSI qualification. Selecting a major version alone is
-not a deployment compatibility test.
+These scripts do not change credentials or TLS behavior: certificate verification
+remains disabled, and TLS is used even with `truenas_use_ssl=0`. Native stream
+migration is not qualified. Tests use substitutes and do not prove live
+PVE/TrueNAS compatibility or storage behavior.
 
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=boomshankerx/proxmox-truenas&type=date&legend=top-left)](https://www.star-history.com/#boomshankerx/proxmox-truenas&type=date&legend=top-left)
