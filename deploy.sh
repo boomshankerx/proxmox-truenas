@@ -1,83 +1,128 @@
-#!/bin/env bash
-dpkg-query -W pve-docs
-dpkg-query -W pve-manager
-dpkg-query -W libpve-storage-perl
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
-PATCH_ARGS="-p1 -b --ignore-whitespace --verbose"
-PATH_APIDocs="/usr/share/pve-docs/api-viewer/apidocs.js"
+# Load shared helpers from the script directory.
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+source "$SCRIPT_DIR/script-common.sh"
+
+# Parse options before checking packages or changing files.
+debug=false
+reinstall=false
+patch_mode=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -d|--debug) debug=true ;;
+    -r|--reinstall) reinstall=true ;;
+    -p|--patch) patch_mode=true ;;
+    -h|--help)
+      echo "Usage: $0 [--patch] [--reinstall] [--debug]"
+      echo "Default: install Native. --patch installs the alternative ZFS-over-iSCSI plugin."
+      exit 0 ;;
+    *) fail "Unknown argument: $1 (use --help)" ;;
+  esac
+  shift
+done
+
+# Define installed file locations.
 PATH_Helper="/usr/share/perl5/TrueNAS/Helpers.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
 PATH_Native="/usr/share/perl5/PVE/Storage/Custom/TrueNASPlugin.pm"
 PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
+PATH_LunCmd="/usr/share/perl5/PVE/Storage/LunCmd"
 
-ver=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
+# Check required tools and the installed PVE version.
+commands=(dpkg-query cp mv rm mkdir mktemp rsync systemctl)
+$patch_mode && commands+=(patch)
+$reinstall && commands+=(apt)
+$debug && commands+=(sed)
+require_commands "${commands[@]}"
+manager_version=$(query_package_version pve-manager)
+storage_version=$(query_package_version libpve-storage-perl)
+ver=$(detect_pve_version "$manager_version")
 
-POSITIONAL_ARGS=()
-
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    -d|--debug)
-      debug=true
-      shift
-      ;;
-    -r|--reinstall)
-      reinstall=true
-      shift 
-      ;;
-    -p|--patch)
-      patch=true
-      shift
-      ;;
-  esac
+# Check the source files required by the selected mode.
+resources=("$SCRIPT_DIR/perl5/TrueNAS/Client.pm" "$SCRIPT_DIR/perl5/TrueNAS/Helpers.pm")
+if $patch_mode; then
+  resources+=("$SCRIPT_DIR/perl5/PVE/Storage/LunCmd/TrueNAS.pm"
+              "$SCRIPT_DIR/perl5/PVE/Storage/ZFSPlugin.pm.$ver.patch"
+              "$SCRIPT_DIR/pve-manager/js/pvemanagerlib.js.$ver.patch")
+else
+  resources+=("$SCRIPT_DIR/perl5/PVE/Storage/Custom/TrueNASPlugin.pm")
+fi
+for resource in "${resources[@]}"; do
+  [[ -f "$resource" && -r "$resource" ]] || fail "Missing readable resource: $resource"
 done
 
-set -- "${POSITIONAL_ARGS[@]}" # restore positional parameters
+# Report the failed stage and clean up temporary patch files.
+stage="preparing deployment"
+work=""
+trap 'echo "[!] Failed while $stage. Deployment stopped; no successful completion. Check the reported step and retained .orig backups before retrying." >&2' ERR
+trap 'if [[ -n "$work" ]]; then rm -rf -- "$work"; fi' EXIT
 
-# Reinstall Proxmox originals
-if [ $reinstall ]; then
-    echo "Reinstalling Proxmox packages..."
-    rm ${PATH_ZFSPlugin}.orig
-    rm ${PATH_Manager}.orig
-    apt reinstall pve-docs
-    apt reinstall pve-manager
-    apt reinstall libpve-storage-perl
+# Optionally reinstall Proxmox packages before preparing plugin files.
+if $reinstall; then
+  stage="reinstalling Proxmox packages"
+  # Keep existing backups until reinstall and patch preparation have succeeded.
+  apt reinstall pve-manager libpve-storage-perl
+fi
+
+# Prepare both patches on copies before installing either result.
+targets=("$PATH_ZFSPlugin" "$PATH_Manager")
+if $patch_mode; then
+  stage="preparing patches"
+  work=$(mktemp -d)
+  patch_files=("$SCRIPT_DIR/perl5/PVE/Storage/ZFSPlugin.pm.$ver.patch"
+               "$SCRIPT_DIR/pve-manager/js/pvemanagerlib.js.$ver.patch")
+  for index in "${!targets[@]}"; do
+    target=${targets[$index]}
+    original=$target
+    if ! $reinstall && [[ -f "$target.orig" ]]; then original="$target.orig"; fi
+    [[ -f "$original" && -r "$original" ]] || fail "Missing original: $original"
+    cp -- "$original" "$work/$index.orig"
+    cp -- "$original" "$work/$index"
+    # Check both patches on copies before replacing any installed plugin file.
+    patch --batch --forward --ignore-whitespace "$work/$index" < "${patch_files[$index]}"
+  done
+fi
+
+# Install the shared client and optionally enable debug logging.
+stage="copying TrueNAS client"
+rsync -av --delete "$SCRIPT_DIR/perl5/TrueNAS" /usr/share/perl5/
+if $debug; then
+  stage="enabling debug logging"
+  sed -i "s/log_level => 'info'/log_level => 'debug'/g" "$PATH_Helper"
+fi
+
+# Install Patch mode, or restore originals and install Native mode.
+if $patch_mode; then
+  stage="installing ZFS-over-iSCSI patches"
+  mkdir -p -- "$PATH_LunCmd"
+  cp -- "$SCRIPT_DIR/perl5/PVE/Storage/LunCmd/TrueNAS.pm" "$PATH_LunCmd/TrueNAS.pm"
+  for index in "${!targets[@]}"; do
+    target=${targets[$index]}
+    cp -- "$work/$index.orig" "$target.orig"
+    cp -- "$work/$index" "$target"
+  done
+  rm -f -- "$PATH_Native"
 else
-    echo "Restoring original files..."
-    mv ${PATH_APIDocs}.orig ${PATH_APIDocs}
-    mv ${PATH_ZFSPlugin}.orig ${PATH_ZFSPlugin}
-    mv ${PATH_Manager}.orig ${PATH_Manager}
+  stage="restoring Proxmox originals"
+  for target in "${targets[@]}"; do
+    if $reinstall; then
+      rm -f -- "$target.orig"
+    elif [[ -f "$target.orig" ]]; then
+      mv -- "$target.orig" "$target"
+    fi
+  done
+  stage="installing Native plugin"
+  mkdir -p -- "${PATH_Native%/*}"
+  cp -- "$SCRIPT_DIR/perl5/PVE/Storage/Custom/TrueNASPlugin.pm" "$PATH_Native"
+  rm -f -- /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm
 fi
 
-# Patch ZFS over iSCSI plugin files
-if [ $patch ]; then
-  echo "[+] Patching ZFS over iSCSI..."
-
-  echo "[+] Removing Native TrueNAS Plugin..."
-  rm -f ${PATH_Native}
-
-  cp perl5/PVE/Storage/LunCmd/TrueNAS.pm /usr/share/perl5/PVE/Storage/LunCmd
-
-  # Patching ZFSPlugin.pm
-  echo "[+] Patching ZFSPlugin.pm..."
-  patch ${PATCH_ARGS} /usr/share/perl5/PVE/Storage/ZFSPlugin.pm < perl5/PVE/Storage/ZFSPlugin.pm.${ver}.patch
-
-  # Patching pvemanagerlib.js
-  echo "[+] Patching pvemanagerlib.js..."
-  patch ${PATCH_ARGS} /usr/share/pve-manager/js/pvemanagerlib.js < pve-manager/js/pvemanagerlib.js.${ver}.patch
-
-else
-  echo "[+] Copying TrueNAS Storage Plugin..."
-  mkdir -p /usr/share/perl5/PVE/Storage/Custom
-  cp perl5/PVE/Storage/Custom/TrueNASPlugin.pm /usr/share/perl5/PVE/Storage/Custom
-  [[ -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm ]] && rm -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm
-fi
-
-echo "[+] Copying TrueNAS Client..."
-rsync perl5/TrueNAS /usr/share/perl5/ -av --delete
-
-if [ $debug ]; then
-  sed -i "s/log_level => 'info'/log_level => 'debug'/g" ${PATH_Helper}
-fi
-
-echo "[+] Restarting Proxmox services..."
+# Restart services only after all installation steps have succeeded.
+stage="restarting Proxmox services"
+# TODO: Consider restarting only pvedaemon, pvestatd and pveproxy after
+# validating on real PVE that corosync and pve-cluster do not need a restart.
+# Preserve the original restart list until then.
 systemctl restart corosync pve-cluster pvedaemon pvestatd pveproxy
+echo "[+] Deployment completed."

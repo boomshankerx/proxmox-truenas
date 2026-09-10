@@ -43,6 +43,7 @@ function fixture(references) {
 }
 
 for (const patchFile of patchFiles) {
+  // Verify selecting TrueNAS preserves configured fields and enables its provider options.
   test(`TrueNAS provider switch enters with configured fields (${patchFile})`, () => {
     const { callback, references } = callbackAndReferences(patchFile);
     const subject = fixture(references);
@@ -62,6 +63,7 @@ for (const patchFile of patchFiles) {
     }
   });
 
+  // Verify leaving TrueNAS clears its credentials and updates the provider options.
   test(`TrueNAS provider switch leaves with cleared credentials (${patchFile})`, () => {
     const { callback, references } = callbackAndReferences(patchFile);
     const subject = fixture(references);
