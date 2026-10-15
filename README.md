@@ -133,7 +133,11 @@ truenas: truenas
 
 - TrueNAS 24.10 - 25.10
 - pve-manager 8.4.14 / 9.2.10  
-- libpve-storage-perl 8.3.7 / 9.2.10
+- libpve-storage-perl 8.3.7 / 9.1.10
+
+These are the patch baselines, not a guarantee for every PVE 8/9 minor release.
+The source deployment script selects patches using the installed `pve-manager`
+major version and checks that both patches apply before replacing plugin files.
 
 TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
 See: <https://github.com/boomshankerx/proxmox-truenas/issues/56#issuecomment-3315936158>
@@ -186,8 +190,39 @@ zfs: truenas
     truenas_user <USER>
 ```
 
+## Working from a source checkout
+
+APT is the usual installation method. For source development on a PVE 8/9 host,
+keep `script-common.sh` and the source directories alongside the scripts. The build and deploy scripts
+can run from any working directory:
+
+```bash
+bash /path/to/deploy.sh           # Install Native (default)
+bash /path/to/deploy.sh --patch   # Install the alternative ZFS-over-iSCSI integration
+bash /path/to/build.sh            # Generate the versioned ZFS/UI patches
+node --test tests/*.test.cjs      # Run regressions from the checkout directory
+```
+
+Use only one integration per storage configuration. `--reinstall` reinstalls
+`pve-manager` and `libpve-storage-perl` first; `--debug` enables logging that may
+expose credentials and RPC payloads. Avoid mixing source and package-managed updates.
+
+Patch mode checks both patches on copies before installation. `.orig` backups
+are retained in Patch mode and restored in Native mode when present. Failures stop
+the script but do not roll back earlier changes; inspect errors and backups before
+retrying. Successful installation restarts `corosync`, `pve-cluster`, `pvedaemon`,
+`pvestatd` and `pveproxy`. Refresh the browser after UI changes.
+
+Building requires original and edited `.8` or `.9` files beside the patch outputs
+(e.g. `ZFSPlugin.pm.8.orig` and `ZFSPlugin.pm.8`), available on the maintainer's
+`patches` branch. Missing inputs or diff errors preserve existing patches.
+API viewer files and `*.orig.patch` are historical references, not build outputs.
+
+These scripts do not change credentials or TLS behavior: certificate verification
+remains disabled, and TLS is used even with `truenas_use_ssl=0`. Native stream
+migration is not qualified. Tests use substitutes and do not prove live
+PVE/TrueNAS compatibility or storage behavior.
+
 ## Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=boomshankerx/proxmox-truenas&type=date&legend=top-left)](https://www.star-history.com/#boomshankerx/proxmox-truenas&type=date&legend=top-left)
-
-
 
