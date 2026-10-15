@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.121](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.120...v1.0.121) (2026-10-15)
+
+
+### Bug Fixes
+
+* Update maximum API version to 16 in TrueNASPlugin ([81f3e47](https://github.com/boomshankerx/proxmox-truenas/commit/81f3e47572bbf1a4ff41c8c0d8cee39acd9f1812))
+
 ## [1.0.120](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.119...v1.0.120) (2026-09-09)
 
 
