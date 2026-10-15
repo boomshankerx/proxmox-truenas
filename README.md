@@ -132,8 +132,8 @@ truenas: truenas
 ## Compatibility
 
 - TrueNAS 24.10 - 25.10
-- pve-manager 8.4.14 / 9.0.11  
-- libpve-storage-perl 8.3.7 / 9.0.13  
+- pve-manager 8.4.14 / 9.2.10  
+- libpve-storage-perl 8.3.7 / 9.2.10
 
 TrueNAS CORE 13.0U6.8 has been reported to work however it is not recommended due to lun limit in ctld  
 See: <https://github.com/boomshankerx/proxmox-truenas/issues/56#issuecomment-3315936158>

@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.0.121](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.120...v1.0.121) (2026-10-15)
+
+
+### Bug Fixes
+
+* Update maximum API version to 16 in TrueNASPlugin ([81f3e47](https://github.com/boomshankerx/proxmox-truenas/commit/81f3e47572bbf1a4ff41c8c0d8cee39acd9f1812))
+
+## [1.0.120](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.119...v1.0.120) (2026-09-09)
+
+
+### Bug Fixes
+
+* **ui:** correct TrueNAS API key reference on provider change ([c025d1a](https://github.com/boomshankerx/proxmox-truenas/commit/c025d1a31eb827dbb055c786ec9a2652e13f6b30))
+* **ui:** correct TrueNAS API key reference on provider change ([c4f1a30](https://github.com/boomshankerx/proxmox-truenas/commit/c4f1a30ec4df622b48af0af01a825ce440530686))
+
+## [1.0.119](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.118...v1.0.119) (2026-08-17)
+
+
+### Bug Fixes
+
+* Refactor iSCSI LUN retrieval with consolidated retry logic in TrueNASPlugin ([a514e69](https://github.com/boomshankerx/proxmox-truenas/commit/a514e698ab6ff7c4ba4369d743a2652d37590466))
+
+## [1.0.118](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.117...v1.0.118) (2026-08-17)
+
+
+### Bug Fixes
+
+* Improve error handling and add retries for iSCSI LUN retrieval in TrueNASPlugin ([74f7d3a](https://github.com/boomshankerx/proxmox-truenas/commit/74f7d3a1a9e2417bf772b82278269f5958feed60))
+
+## [1.0.117](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.116...v1.0.117) (2026-08-17)
+
+
+### Bug Fixes
+
+* Update patch files for PVE 9.2.10 ([0e72a0c](https://github.com/boomshankerx/proxmox-truenas/commit/0e72a0c5606a1d7e3bf58c92cc759d7a1d6db44e))
+
 ## [1.0.116](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.115...v1.0.116) (2026-06-23)
 
 

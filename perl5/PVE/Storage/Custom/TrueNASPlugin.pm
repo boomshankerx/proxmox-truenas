@@ -22,7 +22,7 @@ my $truenas_server_list = undef;         # API connection HashRef using the IP a
 
 sub api {
     my $apiver_min = 11;
-    my $apiver_max = 15;
+    my $apiver_max = 16;
     my $apiver     = PVE::Storage::APIVER;
     if ( $apiver >= $apiver_min and $apiver <= $apiver_max ) {
         return $apiver;
@@ -145,9 +145,12 @@ sub alloc_image {
     # Create zvol
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_zvol_create( "$scfg->{pool}/$volname", $size, $scfg->{blocksize}, $scfg->{sparse} );
-    if ($result) {
-        $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$volname");
-    }
+
+    die "Failed to create zvol for '$volname'\n" if !$result;
+
+    $result = $truenas_client->iscsi_lun_create("$base/$scfg->{pool}/$volname");
+
+    die "Failed to create iSCSI LUN for '$volname'\n" if !$result;
 
     return $volname;
 }
@@ -253,8 +256,16 @@ sub path {
 
     truenas_client_init($scfg);
     my $extent = $truenas_client->iscsi_lun_get($object);
-    my $lun    = $extent->{lunid};
+    for ( my $i = 1 ; !defined($extent) && $i <= 5 ; $i++ ) {
+        $extent = $truenas_client->iscsi_lun_get($object);
+        last if $extent;
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
+    }
 
+    die "zvol/$pool/$name not found" if !defined($extent);
+
+    my $lun  = $extent->{lunid};
     my $path = "iscsi://$portal/$target/$lun";
 
     _log( "$path, vmid: $vmid, vtype: $vtype", 'debug' );
@@ -290,11 +301,22 @@ sub qemu_blockdev_options {
       if $options->{'snapshot-name'};
 
     my $name   = ( $class->parse_volname($volname) )[1];
+    my $pool   = $scfg->{pool};
     my $object = "zvol/$scfg->{pool}/$name";
 
     truenas_client_init($scfg);
+
     my $extent = $truenas_client->iscsi_lun_get($object);
-    my $lun    = $extent->{lunid};
+    for ( my $i = 1 ; !defined($extent) && $i <= 5 ; $i++ ) {
+        $extent = $truenas_client->iscsi_lun_get($object);
+        last if $extent;
+        _log( "Retry $i/5...waiting 1 second", 'info' );
+        sleep(1);
+    }
+
+    die "zvol/$pool/$name not found" if !defined($extent);
+
+    my $lun = $extent->{lunid};
 
     return {
         driver    => 'iscsi',
