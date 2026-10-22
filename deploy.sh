@@ -7,7 +7,7 @@ PATCH_ARGS="-p1 -b --ignore-whitespace --verbose"
 PATH_APIDocs="/usr/share/pve-docs/api-viewer/apidocs.js"
 PATH_Helper="/usr/share/perl5/TrueNAS/Helpers.pm"
 PATH_Manager="/usr/share/pve-manager/js/pvemanagerlib.js"
-PATH_Native="/usr/share/perl5/PVE/Storage/Custom/TrueNASPlugin.pm"
+PATH_Native="/usr/share/perl5/PVE/Storage/Custom/TrueNASNativePlugin.pm"
 PATH_ZFSPlugin="/usr/share/perl5/PVE/Storage/ZFSPlugin.pm"
 
 ver=$(dpkg-query -W proxmox-ve | awk '{ print $2}' | cut -d'.' -f1)
@@ -68,7 +68,7 @@ if [ $patch ]; then
 else
   echo "[+] Copying TrueNAS Storage Plugin..."
   mkdir -p /usr/share/perl5/PVE/Storage/Custom
-  cp perl5/PVE/Storage/Custom/TrueNASPlugin.pm /usr/share/perl5/PVE/Storage/Custom
+  cp perl5/PVE/Storage/Custom/TrueNASNativePlugin.pm /usr/share/perl5/PVE/Storage/Custom
   [[ -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm ]] && rm -f /usr/share/perl5/PVE/Storage/Custom/TrueNAS.pm
 fi
 

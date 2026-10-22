@@ -1,4 +1,4 @@
-package PVE::Storage::Custom::TrueNASPlugin;
+package PVE::Storage::Custom::TrueNASNativePlugin;
 use base qw(PVE::Storage::ZFSPoolPlugin);
 
 use strict;
