@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.122](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.121...v1.0.122) (2026-10-22)
+
+
+### Bug Fixes
+
+* Rename TrueNASPlugin to TrueNASNativePlugin to facilitate migration to the offical TrueNAS plugin. ([8a988d3](https://github.com/boomshankerx/proxmox-truenas/commit/8a988d3029138ce4c593f9f7982fc11fba604dc2))
+
 ## [1.0.121](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.120...v1.0.121) (2026-10-15)
 
 
