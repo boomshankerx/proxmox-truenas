@@ -633,7 +633,7 @@ sub iscsi_lun_get {
     $options = { get => \1 };
     my $extent = $self->request( 'iscsi.extent.query', $query, $options );
     if ( !$extent ) {
-        _log( "Extent not found for path: $path", 'warn' );
+        _log( "Extent not found for disk: $path", 'warn' );
         return;
     }
 
@@ -641,7 +641,7 @@ sub iscsi_lun_get {
     $options = { get => \1 };
     my $targetextent = $self->request( 'iscsi.targetextent.query', $query, $options );
     if ( !$targetextent ) {
-        _log( "Target extent not found for target: $target_name", 'warn' );
+        _log( "LUN not found for disk: $path", 'warn' );
         return;
     }
 
@@ -860,6 +860,11 @@ sub zfs_zvol_list {
     }
     my $text = "";
     for my $zvol (@$result) {
+
+        my $object = "zvol/$zvol->{name}";
+        my $lun = $self->iscsi_lun_get($object);
+        next if !$lun;
+
         $text .= $zvol->{name} . " " . ( $zvol->{volsize}{rawvalue} || '-' ) . " " . ( $zvol->{origin}{rawvalue} || '-' ) . " " . ( lc( $zvol->{type} ) ) . " " . ( $zvol->{refquota}{rawvalue} // '-' ) . "\n";
     }
 
