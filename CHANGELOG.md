@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.123](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.122...v1.0.123) (2026-10-24)
+
+
+### Bug Fixes
+
+* Check for valid LUN when listing disks ([f8c73c8](https://github.com/boomshankerx/proxmox-truenas/commit/f8c73c8d20df4730155b6fa6da8b940cae7866cf))
+
 ## [1.0.122](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.121...v1.0.122) (2026-10-22)
 
 
