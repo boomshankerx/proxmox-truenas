@@ -547,7 +547,7 @@ sub zfs_list_zvol {
 
     truenas_client_init($scfg);
     my $result = $truenas_client->zfs_zvol_list( $scfg->{pool} );
-    my $zvols  = PVE::Storage::ZFSPoolPlugin::zfs_parse_zvol_list( $result, $scfg->{pool} );
+    my $zvols  = $class->zfs_parse_zvol_list( $result, $scfg->{pool} );
     return {} if !$zvols;
 
     my $list = {};
