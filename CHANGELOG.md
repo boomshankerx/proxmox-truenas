@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.124](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.123...v1.0.124) (2026-11-08)
+
+
+### Bug Fixes
+
+* update zfs_list_zvol to use class method for parsing zvol list ([f54cf5f](https://github.com/boomshankerx/proxmox-truenas/commit/f54cf5f7686368548d1f1cda1ec94e7c188f414a))
+
 ## [1.0.123](https://github.com/boomshankerx/proxmox-truenas/compare/v1.0.122...v1.0.123) (2026-10-24)
 
 
